@@ -1,0 +1,19 @@
+{
+  "name": "touring",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "predev": "python3 ../tools/build_music.py",
+    "dev": "vite",
+    "prebuild": "python3 ../tools/build_music.py",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "vite": "^6.4.5"
+  }
+}

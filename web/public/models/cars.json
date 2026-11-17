@@ -1,0 +1,108 @@
+{
+  "ae86": {
+    "id": "ae86",
+    "name": "Toyota AE86 Trueno",
+    "file": "models/ae86.glb",
+    "credit": "Based on \"Toyota AE86 Trueno - Low Poly\" by JiggleSticks, CC-BY-4.0; brakes from \"Toyota Supra - Low Poly (Reuploaded)\" by JiggleSticks, CC-BY-4.0",
+    "length": 4.18,
+    "width": 1.798,
+    "height": 1.277,
+    "wheelbase": 2.326,
+    "track": 1.411,
+    "wheel_radius": 0.291,
+    "hinged": [
+      "popups"
+    ],
+    "hinge_closed": {
+      "popups": -1.52
+    }
+  },
+  "r32": {
+    "id": "r32",
+    "name": "Nissan Skyline R32",
+    "file": "models/r32.glb",
+    "credit": "Based on \"Nissan Skyline R32 -  Low Poly\" by JiggleSticks, CC-BY-4.0",
+    "length": 4.545,
+    "width": 1.911,
+    "height": 1.343,
+    "wheelbase": 2.608,
+    "track": 1.496,
+    "wheel_radius": 0.33,
+    "hinged": [],
+    "hinge_closed": {}
+  },
+  "gtr": {
+    "id": "gtr",
+    "name": "Nissan GT-R",
+    "file": "models/gtr.glb",
+    "credit": "Based on \"Nissan GTR - Low Poly\" by JiggleSticks, CC-BY-4.0",
+    "length": 4.71,
+    "width": 2.046,
+    "height": 1.425,
+    "wheelbase": 2.757,
+    "track": 1.46,
+    "wheel_radius": 0.379,
+    "hinged": [],
+    "hinge_closed": {}
+  },
+  "supra": {
+    "id": "supra",
+    "name": "Toyota Supra",
+    "file": "models/supra.glb",
+    "credit": "Based on \"Toyota Supra - Low Poly (Reuploaded)\" by JiggleSticks, CC-BY-4.0",
+    "length": 4.515,
+    "width": 1.952,
+    "height": 1.316,
+    "wheelbase": 2.524,
+    "track": 1.507,
+    "wheel_radius": 0.348,
+    "hinged": [],
+    "hinge_closed": {}
+  },
+  "celica6": {
+    "id": "celica6",
+    "name": "Toyota Celica (6th gen)",
+    "file": "models/celica6.glb",
+    "credit": "Based on \"Toyota Celica 6th Gen - Low Poly\" by JiggleSticks, CC-BY-4.0",
+    "length": 4.42,
+    "width": 1.941,
+    "height": 1.27,
+    "wheelbase": 2.472,
+    "track": 1.427,
+    "wheel_radius": 0.296,
+    "hinged": [],
+    "hinge_closed": {}
+  },
+  "celica7": {
+    "id": "celica7",
+    "name": "Toyota Celica (7th gen)",
+    "file": "models/celica7.glb",
+    "credit": "Based on \"Toyota Celica 7th Gen - Low Poly\" by JiggleSticks, CC-BY-4.0; brakes from \"Toyota Supra - Low Poly (Reuploaded)\" by JiggleSticks, CC-BY-4.0",
+    "length": 4.335,
+    "width": 1.899,
+    "height": 1.309,
+    "wheelbase": 2.592,
+    "track": 1.453,
+    "wheel_radius": 0.313,
+    "hinged": [],
+    "hinge_closed": {}
+  },
+  "rx7": {
+    "id": "rx7",
+    "name": "Mazda RX-7 (FC)",
+    "file": "models/rx7.glb",
+    "credit": "Based on \"Mazda RX-7\" by IvOfficial (poly.pizza/m/SnIoWlh7S2), CC-BY-3.0",
+    "length": 4.29,
+    "width": 1.927,
+    "height": 1.265,
+    "wheelbase": 2.432,
+    "track": 1.485,
+    "wheel_radius": 0.314,
+    "hinged": [
+      "popups"
+    ],
+    "hinge_closed": {
+      "popups": -1.45
+    }
+  }
+}

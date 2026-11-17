@@ -1,0 +1,16 @@
+{
+ "crs": "EPSG:31983",
+ "x0": 676762.5686649912,
+ "y0": 7458081.206183635,
+ "step": 5.0,
+ "nx": 851,
+ "ny": 631,
+ "rows": "north_to_south",
+ "bbox_lonlat": [
+  -43.2753,
+  -23.0046,
+  -43.2342,
+  -22.9757
+ ],
+ "source": "Instituto Pereira Passos, Prefeitura do Rio de Janeiro, MDT LiDAR 2019 (5 m), CC BY 4.0"
+}

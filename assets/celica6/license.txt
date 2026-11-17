@@ -1,0 +1,11 @@
+Model Information:
+* title:	Toyota Celica 6th Gen - Low Poly
+* source:	https://sketchfab.com/3d-models/toyota-celica-6th-gen-low-poly-7420735e11434c3ea9960a2621bc073f
+* author:	JiggleSticks (https://sketchfab.com/JiggleSticks)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Toyota Celica 6th Gen - Low Poly" (https://sketchfab.com/3d-models/toyota-celica-6th-gen-low-poly-7420735e11434c3ea9960a2621bc073f) by JiggleSticks (https://sketchfab.com/JiggleSticks) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

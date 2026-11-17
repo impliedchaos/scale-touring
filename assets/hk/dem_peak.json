@@ -1,0 +1,16 @@
+{
+ "crs": "EPSG:2326",
+ "x0": 832250.0,
+ "y0": 815600.0,
+ "step": 2.0,
+ "ny": 1200,
+ "nx": 3000,
+ "rows": "north_to_south",
+ "bbox_lonlat": [
+  114.144,
+  22.26,
+  114.19,
+  22.277
+ ],
+ "source": "CEDD, HKSAR Government, LiDAR 2020 DTM (0.5 m), via CSDI / DATA.GOV.HK"
+}

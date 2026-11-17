@@ -1,0 +1,15 @@
+# dependencies / build output
+node_modules/
+web/dist/
+release/
+
+# generated (tools/build_music.py)
+web/public/music/
+
+# CC-BY-ND: never convert or ship
+assets/fc/
+
+# misc
+.DS_Store
+*.log
+__pycache__/
