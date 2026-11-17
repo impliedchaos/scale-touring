@@ -245,6 +245,7 @@ class Music {
     if (this.el.paused) { try { await this.el.play(); } catch { return false; } }
     return true;
   }
+  pause() { this.el.pause(); }
   load(i) {
     this.i = i;
     this.el.src = `music/${this.list[i].file}`;
@@ -259,6 +260,7 @@ class Music {
 // ---------------------------------------------------------------- the whole thing
 
 const RIVAL_ENGINES = {
+  ae86: { firings: 2, pattern: [1, 0.8, 0.94, 0.74] },
   r32: { firings: 3, pattern: [1, 0.92, 0.97, 0.9, 0.95, 0.88], turbo: true },
   gtr: { firings: 3, pattern: [1, 0.93, 0.96, 0.9, 0.97, 0.9], turbo: true },
   supra: { firings: 3, pattern: [1, 0.9, 0.97, 0.88, 0.95, 0.9], turbo: true },
@@ -389,7 +391,7 @@ export class Sound {
       else this.test = null;
     }
     if (st.warping) rpm *= 1.5 + Math.sin(t * 31) * 0.4;   // the fourth dimension is high-rpm
-    this.engine.update(rpm, load, dt);
+    this.engine.update(rpm, load, dt, st.player.silent ? 0 : 1);
     this.screech.update(Math.max(st.player.slip, this.hold.screech ? 1 : 0), P.screech, dt);
     this.grind.update(Math.max(st.player.grind, this.hold.grind ? 1 : 0), P.grind, st.player.gutter ? 0.45 : 1);
     this.wind.update(st.player.speed01, st.player.air, P.wind);

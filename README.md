@@ -22,7 +22,7 @@ All from `web/`: `npm install`, then `npm run dev` (Vite; `predev` runs `tools/b
 
 ## The fly-by
 It's the default page. **Esc** (or the ☰ button, or pad START) opens the options menu: place, time of day, weather, car,
-direction, tilt-shift, shadows, pace, text overlay, frame rate, and credits. Pace, text and frame rate apply live; the
+starting direction, tilt-shift, shadows, pace, text overlay, frame rate, and credits. Pace, engine sound, music, text and frame rate apply live; the
 rest rebuild the scene, so they're staged and an *Apply changes* row reloads the page with them. Choices are remembered
 in `localStorage`. Keys: **Space** pause, **[ ]** pace, **H** hide text, **R** restart (pad: A, L1/R1, Y).
 
@@ -32,11 +32,12 @@ The URL overrides the saved options (so test links stay exact). Flags are on whe
 |-------|--------|
 | `site=<name>` | which place (a folder in `web/public/track/`); none = Route 33. The menu's list is `PLACES` in `course/options.js` |
 | `car=<id>` / `car=none` | the car to chase (default `ae86`; any id in `cars.json`); `none` = the drone just flies the road. Each car's tuning is in `course/drivers.js` |
-| `tiltshift=0` | turn off the miniature look (default on): a 30° lens, blur above and below the car, which it keeps centred |
-| `uphill` | start at the bottom and climb |
+| `tiltshift=0\|1\|2` | miniature look: off / 1 estimated (blur by screen height) / 2 depth map (default): a 30° lens, blur away from the car, which it keeps centred |
+| `uphill=0` | start at the top and descend (default is uphill) |
+| `engine`, `music` | sound on (both are off by default; the menu has rows for them) |
 | `day` | daylight (default is night) |
 | `weather=clear\|wet\|rain\|fog\|wetfog` | weather |
-| `shadows=0\|1\|2` | moon shadows off / low / high |
+| `shadows=0\|1\|2` | moon shadows off / low / high (default 2) |
 | `s=<metres>`, `speed=<m/s>`, `still`, `fps`, `menu` | start point, drone speed (no car), freeze (screenshots), frame-rate counter, open the menu |
 
 The title card and HUD take their text from the site's `course.json` (`title`, `startName`).
@@ -75,8 +76,9 @@ GLB conventions: metres, Y up, facing -Z, origin on the ground between the axles
 `wheel_FL/FR/RL/RR`, and `popups` on the AE86 and RX-7. `?garage` views every car (**←/→** to switch).
 
 ## Sound
-There is no music at the moment. Engines and effects are synthesized live in `web/src/audio/` (the fly-by doesn't use
-them yet; `?audiotest` checks the engine voice). When songs come back: originals and `tracks.json` go in `assets/songs/`,
+There is no music at the moment. Engines and effects are synthesized live in `web/src/audio/`; the fly-by hears the chased car's engine from the drone
+(`course/audio.js`, positional with Doppler) and plays the music. Both are off by default and start on the first click or key
+(browser autoplay rules). `?audiotest` checks the engine voice. When songs come back: originals and `tracks.json` go in `assets/songs/`,
 and `tools/build_music.py` (run before dev/build; a no-op without `tracks.json`) re-encodes them into `web/public/music/`
 (generated) and **fails the build if a track isn't credited in `CREDITS.md`**. The `Music` class in `audio/sound.js` plays that playlist.
 

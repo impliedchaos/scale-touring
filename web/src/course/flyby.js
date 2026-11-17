@@ -2,7 +2,7 @@
 // Esc opens the options menu. Other keys: Space pause · [ ] pace · H hide the text · R restart.  Pad: START menu · A pause · L1/R1 pace · Y text.
 // Options (course/options.js) come from the menu (remembered), and the URL overrides them for tests and screenshots:
 //      ?site=rio|hk another place (tools/build_site.py) · ?day · ?weather=clear|wet|rain|fog|wetfog · ?uphill (start at the bottom)
-//      ?car=<id>|none the car to chase (default ae86; none = the drone just flies the road) · ?tiltshift=0 turns the miniature look off
+//      ?car=<id>|none the car to chase (default ae86; none = the drone just flies the road) · ?tiltshift=0|1|2 miniature look off · blurred by screen height (estimated) · by scene depth (bare = 2)
 //      ?shadows=0|1|2 off · headlights and the moon's, coarse · plus the moon's sharp near the camera (bare ?shadows = 2)
 //      ?fps frame-rate counter
 // Test-only:  ?s=<metres> start position · ?speed=<m/s> drone speed with no car · ?still freezes (for screenshots)
@@ -19,6 +19,7 @@ import { TiltShift } from './tiltshift.js';
 import { DRIVERS } from './drivers.js';
 import { loadOptions, saveOptions, applyAndReload, PLACES, PACES, LIVE } from './options.js';
 import { Menu } from './menu.js';
+import { FlyAudio } from './audio.js';
 
 const params = new URLSearchParams(location.search);
 const opt = loadOptions(params);
@@ -57,14 +58,15 @@ if (carId) {
   car.rig.castShadows();
   car.rig.setShadow(shadowLevel >= 1);
 }
-const tilt = opt.tilt ? new TiltShift(renderer, scene, camera) : null;
+const tilt = opt.tilt ? new TiltShift(renderer, scene, camera, { byDepth: opt.tilt === 2 }) : null;
 // tilt-shift: a long lens from the usual drone path (like real miniature-look photos). With a car it keeps the car dead
 // centre; without, it looks less far up the road so what it's looking at fits the narrower frame
 const ZOOM_FOV = 30, LOOK_AHEAD = 0.4;
 if (tilt) { camera.fov = ZOOM_FOV; camera.updateProjectionMatrix(); }
 const drone = new Drone(path, heightAt, camera, { lookAhead: tilt ? LOOK_AHEAD : 1 });
+const audio = new FlyAudio({ opt, car, carId, spec: cars[carId], weather });
 const carFocus = new THREE.Vector3(), carCentre = new THREE.Vector3();
-if (params.has('log')) window.__flyby = { car, drone, tilt, camera, path, renderer, scene, moonShadow: world.moonShadow, get s() { return car ? car.s : s; }, set s(v) { if (car) car.s = v; else s = v; } }; // poke at it from tests / devtools
+if (params.has('log')) window.__flyby = { audio, car, drone, tilt, camera, path, renderer, scene, moonShadow: world.moonShadow, get s() { return car ? car.s : s; }, set s(v) { if (car) car.s = v; else s = v; } }; // poke at it from tests / devtools
 
 // ---------------------------------------------------------------- text
 const fmtKm = (m) => `${(m / 1000).toFixed(2)} km`;
@@ -104,15 +106,17 @@ const menu = new Menu({
     { key: 'day', label: 'Time of day', values: [[false, 'Night'], [true, 'Day']] },
     { key: 'weather', label: 'Weather', values: Object.entries(WEATHER).map(([k, w]) => [k, w.label ? w.label[0] + w.label.slice(1).toLowerCase() : 'Clear']) },
     { key: 'car', label: 'Car', values: [['', 'None (drone only)'], ...Object.values(cars).map((c) => [c.id, c.name])] },
-    { key: 'uphill', label: 'Direction', values: [[false, 'Downhill'], [true, 'Uphill']] },
-    { key: 'tilt', label: 'Tilt-shift', values: onOff },
-    { key: 'shadows', label: 'Shadows', values: [[0, 'Off'], [1, 'Headlights and moon'], [2, 'Sharp']] },
+    { key: 'uphill', label: 'Starting direction', values: [[false, 'Downhill'], [true, 'Uphill']] },
+    { key: 'tilt', label: 'Tilt-shift', values: [[0, '0 - Off'], [1, '1 - Estimated'], [2, '2 - Depth map']] },
+    { key: 'shadows', label: 'Shadows', values: [[0, '0 - Off'], [1, '1 - Headlights and moon'], [2, '2 - Sharp']] },
     { key: 'pace', label: 'Pace', values: PACES.map((p) => [p, `×${p}`]) },
+    { key: 'engine', label: 'Engine sound', values: onOff },
+    { key: 'music', label: 'Music', values: onOff },
     { key: 'text', label: 'Text overlay', values: onOff },
     { key: 'fps', label: 'Frame rate', values: onOff },
   ],
   onApply: (staged) => applyAndReload(staged),
-  onLive: () => saveLive(),
+  onLive: () => { saveLive(); audio.sync(); },
 });
 // live options are remembered as soon as they change (the staged ones wait for Apply)
 function saveLive() {
@@ -148,6 +152,7 @@ renderer.setAnimationLoop(() => {
     if (uphill ? s < 0 : s > path.finish + 150) restart(); // past the end: back to the start
   }
   drone.aim(s, car ? car.camDir() : dir, still ? 0 : car ? dt * pace : dt, still, tilt && car ? carCentre.copy(car.rig.pos).setY(car.rig.pos.y + 0.7) : null);
+  audio.update(run && car ? dt * pace : 0, camera, paused || still);
   weather.update(still ? 0 : dt, camera);
   world.moonShadow?.follow(camera, drone.focus);
   drawText(still ? 0 : dt);

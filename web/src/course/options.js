@@ -13,15 +13,15 @@ export const PLACES = [
 export const PACES = [0.25, 0.5, 1, 2, 4, 8];
 
 export const DEFAULTS = {
-  site: '', day: false, weather: 'clear', car: 'ae86', tilt: true, shadows: 0, uphill: false, // WORLD
-  pace: 1, text: true, fps: false,                                                              // LIVE
+  site: '', day: false, weather: 'clear', car: 'ae86', tilt: 2, shadows: 2, uphill: true,  // WORLD
+  pace: 1, text: true, fps: false, engine: false, music: false,                                 // LIVE
 };
-export const LIVE = ['pace', 'text', 'fps'];
+export const LIVE = ['pace', 'text', 'fps', 'engine', 'music'];
 
 const KEY = 'touring-options';
 const OFF = new Set(['0', 'false', 'off', 'no', 'none']);
 // URL parameter behind each option, for stripping them off the address when the menu reloads the page
-export const URL_KEYS = ['site', 'day', 'weather', 'car', 'tiltshift', 'shadows', 'uphill', 'fps'];
+export const URL_KEYS = ['site', 'day', 'weather', 'car', 'tiltshift', 'shadows', 'uphill', 'fps', 'engine', 'music'];
 
 const flag = (params, name) => { const v = params.get(name); return v !== null && !OFF.has(v); };
 
@@ -35,10 +35,12 @@ export function loadOptions(params) {
   if (params.has('day')) o.day = flag(params, 'day');
   if (WEATHER[params.get('weather')]) o.weather = params.get('weather');
   if (params.has('car')) o.car = flag(params, 'car') ? params.get('car') || 'ae86' : '';
-  if (params.has('tiltshift')) o.tilt = flag(params, 'tiltshift');
+  if (params.has('tiltshift')) o.tilt = flag(params, 'tiltshift') ? Math.min(Math.max(Math.round(+(params.get('tiltshift') || 2)) || 0, 0), 2) : 0;
   if (params.has('shadows')) o.shadows = flag(params, 'shadows') ? Math.min(Math.max(Math.round(+(params.get('shadows') || 2)) || 0, 0), 2) : 0;
   if (params.has('uphill')) o.uphill = flag(params, 'uphill');
   if (params.has('fps')) o.fps = flag(params, 'fps');
+  if (params.has('engine')) o.engine = flag(params, 'engine');
+  if (params.has('music')) o.music = flag(params, 'music');
 
   if (!PLACES.some((p) => p.id === o.site) && !params.has('site')) o.site = '';
   if (!PACES.includes(o.pace)) o.pace = 1;

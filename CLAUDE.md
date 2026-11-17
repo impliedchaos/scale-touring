@@ -47,7 +47,7 @@ The README walks through it.
 `?audiotest`. No racing: the car drives itself (`course/showcase.js` `BootlegCar`, tuning per car in `course/drivers.js`).
 
 **Options.** `course/options.js` merges defaults ← `localStorage` ← URL params (URL wins). `course/menu.js` is the Esc menu: LIVE options
-(pace, text, fps) apply at once, WORLD options (place, time, weather, car, direction, tilt-shift, shadows) are staged and *Apply* reloads
+(pace, engine, music, text, fps) apply at once, WORLD options (place, time, weather, car, direction, tilt-shift, shadows) are staged and *Apply* reloads
 the page. A new option = a default in `DEFAULTS`, a parse line in `loadOptions`, and a row in `flyby.js`. A new place = a folder in
 `web/public/track/` **and** an entry in `PLACES` (options.js).
 
@@ -73,11 +73,11 @@ on the valley side. Always fills DEM nodata (sea would otherwise give NaN terrai
 **Buildings (`tools/build_buildings.py`).** OSM footprints nudged off the road; heights from tags or guessed; walls and roofs from
 `PALETTES[site]` (else Japan's), `--flat` for flat roofs. Rendered as one merged mesh with a window texture that lights at night.
 
-**Fly-by look.** `course/flyby.js` (drone shots), `course/tiltshift.js` (lens and blur), `game/beams.js` (fake volumetric headlight cones),
+**Fly-by look.** `course/flyby.js` (drone shots), `course/tiltshift.js` (lens and blur: by scene depth around the car at level 2, screen height at level 1), `game/beams.js` (fake volumetric headlight cones),
 `game/taillights.js`, `game/weather.js`, `game/world.js` (moon shadows).
 
 **Cars.** `tools/build_car.py` builds `web/public/models/<id>.glb` and `cars.json` from `assets/<folder>/`.
 
-**Inherited.** The audio engine (`src/audio/`; unused by the fly-by for now, has a `Music` class waiting for songs), the car rig (`game/car.js`)
+**Inherited.** The audio engine (`src/audio/`; the fly-by drives it from `course/audio.js` (the car is the positional "rival" voice; engine and music off by default); the `Music` class waits for songs), the car rig (`game/car.js`)
 and the 86's drift choreography (`course/drift.js`), and `garage.js`. The game's race, rivals, director, HUD and map were removed.
 See the game's CLAUDE.md for how the shared parts work.

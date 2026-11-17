@@ -125,6 +125,8 @@ export class BootlegCar {
     r.trackVelocity(dt);
     if (dt > 0) { r.tireFx(dt, Math.abs(speed), slip, this.smoke, this.skids); this.weather.spray(r, Math.abs(speed), dt); }
     this.speed = Math.abs(speed);
+    // what its engine would be doing, for the sound (course/audio.js): signed road speed, drift 0..1, whether it's on the gas
+    this.drive = { v: speed, slip: Math.min(1, Math.abs(slip) / 0.9), throttle: this.phase === 'run' ? 1 : this.phase === 'stop' ? 0 : 0.6 };
   }
 }
 
