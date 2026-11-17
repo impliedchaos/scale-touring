@@ -42,6 +42,9 @@ PALETTES["hk"] = (   # Mid-Levels towers: tiled and painted concrete, pale and w
 PALETTES["amalfi"] = (   # Positano and the villages: painted plaster in sun-bleached pinks, ochres and creams, with a few whites and pale blues
     ["#e8d9bc"] * 3 + ["#e3b98f"] * 3 + ["#d9967a"] * 2 + ["#e9c46a"] * 2 + ["#f0e6d2"] * 3 + ["#d98b8b", "#c97b63", "#a9c4c9", "#efe3b8", "#d6a77a"],
     ["#b5573c"] * 5 + ["#a34a33"] * 3 + ["#c4694a"] * 2 + ["#8c8c88", "#b4b0a6"])
+PALETTES["monaco"] = (   # Riviera apartment blocks: cream, ochre and pink render, white towers
+    ["#efe6d2"] * 3 + ["#e8d9bc"] * 3 + ["#e3b98f"] * 2 + ["#d9967a"] + ["#f4f1ea"] * 3 + ["#d6c3a0", "#c9ced1", "#e9c46a", "#d98b8b", "#b8c4cc"],
+    ["#b5573c"] * 3 + ["#a34a33"] * 2 + ["#8c8c88"] * 3 + ["#b4b0a6"] * 2 + ["#6e7378"])
 if SITE in PALETTES: WALLS, ROOFS = PALETTES[SITE]
 
 course = json.load(open(os.path.join(TRACK, "course.json")))
@@ -61,7 +64,7 @@ def fetch():
     (n, w), (s, e) = latlon(T["x0"], T["z0"]), latlon(x1, z1)
     bbox = f"{s:.5f},{w:.5f},{n:.5f},{e:.5f}"
     q = f'[out:json][timeout:90];(way["building"]({bbox});relation["building"]({bbox}););out geom tags;'
-    req = urllib.request.Request("https://overpass-api.de/api/interpreter",
+    req = urllib.request.Request(os.environ.get("OVERPASS", "https://overpass-api.de/api/interpreter"),
                                  data=urllib.parse.urlencode({"data": q}).encode(), headers=UA)
     with urllib.request.urlopen(req, timeout=120) as r, open(RAW, "wb") as f: f.write(r.read())
     print("fetched", RAW)

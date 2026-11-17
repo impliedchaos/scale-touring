@@ -57,6 +57,14 @@ SITES = {
                    ground=dict(green="#586a3a", scrub="#76733f", rock="#a39884", rockFlat=0.75, sand="#d8c8a0", sandBelow=2.0),
                    credits=["Terrain: INGV TINITALY/1.1 10 m DEM (Tarquini et al., 2012), CC BY 4.0",
                             "Road: © OpenStreetMap contributors (ODbL)"]),
+    "monaco": dict(title=["MONACO", "MOYENNE CORNICHE → PORT HERCULE · MONACO"], start_name="Èze", route="data/monaco_route.json",
+                   dem="assets/monaco/dem_monaco", crest=False,
+                   cell=6.0, margin=500.0, dem_smooth=2.0, flat_r=8.0, blend_r=28.0, y_smooth=15.0,
+                   sea=0.3,
+                   forest=dict(sparse=dict(below=3.0, palmRoad=0)),
+                   ground=dict(green="#586a3a", scrub="#76733f", rock="#a39884", rockFlat=0.75, sand="#d8c8a0", sandBelow=2.0),
+                   credits=["Terrain: IGN RGE ALTI (Licence Ouverte 2.0), 1 m LiDAR terrain model",
+                            "Road: © OpenStreetMap contributors (ODbL)"]),
     "nagasaki": dict(title=["INASAYAMA", "MT. INASA ROADS · NAGASAKI · JAPAN"], start_name="the summit", route="data/nagasaki_route.json",
                      dem="assets/nagasaki/dem_inasa", crest=False,   # stored summit to harbour: the default (uphill) drive climbs to the summit
                      cell=6.0, margin=500.0, dem_smooth=1.0, flat_r=8.0, blend_r=28.0, y_smooth=15.0,
@@ -121,6 +129,7 @@ def main():
     for br in route.get("bridges", []):
         ends = [int(np.argmin(np.hypot(x - (br[k][1] - lon0) * KX, z + (br[k][0] - lat0) * KZ))) for k in ("a", "b")]
         ia, ib = sorted(ends)
+        if ib - ia < 3: continue   # a culvert-sized span: no deck to draw (a zero-length span breaks buildBridges)
         y[ia:ib + 1] = np.linspace(y[ia], y[ib], ib - ia + 1)
         deck[ia:ib + 1] = True
     # Tunnels (route["tunnels"]): the DEM over a tunnel is the hill, so the road runs level between the portals, inside it, and the
@@ -224,7 +233,8 @@ def main():
     course["title"], course["startName"] = cfg["title"], cfg["start_name"]   # the fly-by's title card and HUD
     runs = np.flatnonzero(np.diff(np.r_[0, deck_in.astype(int), 0]))
     if len(runs):
-        course["bridges"] = [[round(float(ds[a_]), 1), round(float(ds[b_ - 1]), 1)] for a_, b_ in zip(runs[::2], runs[1::2])]   # deck spans, in s
+        course["bridges"] = [[round(float(ds[a_]), 1), round(float(ds[b_ - 1]), 1)] for a_, b_ in zip(runs[::2], runs[1::2]) if b_ - a_ > 2]   # deck spans, in s (a zero-length span breaks buildBridges)
+        if not course["bridges"]: del course["bridges"]
     truns = np.flatnonzero(np.diff(np.r_[0, tun_in.astype(int), 0]))
     if len(truns):
         course["tunnels"] = [[round(float(ds[a_]), 1), round(float(ds[b_ - 1]), 1)] for a_, b_ in zip(truns[::2], truns[1::2])]   # tunnel spans, in s

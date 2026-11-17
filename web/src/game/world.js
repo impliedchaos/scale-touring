@@ -226,12 +226,12 @@ class MoonShadow {
   }
 }
 
-/** Who casts and who receives. Trees, rails and buildings cast (the trees also shade each other); the ground only
+/** Who casts and who receives. Trees, rails, buildings, bridges and tunnel liners cast (the trees also shade each other); the ground only
  *  receives, and the undergrowth too: there's lots of it and it's low, so casting isn't worth a shadow pass. */
 function castShadows(renderer, scene) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
-  const CAST = new Set(['forest', 'guardrails', 'buildings', 'bridges']);
+  const CAST = new Set(['forest', 'guardrails', 'buildings', 'bridges', 'tunnels']);   // tunnels: the liner stops moonlight and the headlights getting into, or out of, the hill
   for (const top of scene.children) {
     const cast = CAST.has(top.name);
     top.traverse((o) => {

@@ -16,6 +16,7 @@ driving itself.
 | Big Sur, California | Pacific Coast Highway (CA 1), Rocky Creek → Bixby Creek Bridge → Hurricane Point, 8 km | `?site=bigsur` |
 | Amalfi Coast, Italy | SS 163 (Strada Statale Amalfitana), Positano → Fiordo di Furore, 12 km | `?site=amalfi` |
 | Nagasaki, Japan | Mt. Inasa summit road down to the harbour, 4 km (GSI 5 m DEM) | `?site=nagasaki` |
+| Monaco | Moyenne Corniche (D 6007) from Èze down through Monaco to Port Hercule, 7.5 km (IGN RGE ALTI) | `?site=monaco` |
 
 More are listed in [TODO.md](TODO.md).
 
