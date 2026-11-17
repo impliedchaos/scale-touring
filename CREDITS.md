@@ -36,7 +36,9 @@ so they're fitted with the Supra's brake calipers and discs.
 
 ## Sound
 - Engines, tire screech, guardrail grind, wind and all sound effects are synthesized live in the browser with the
-  Web Audio API. No samples. (There is no music at the moment.)
+  Web Audio API. No samples.
+- "Maximum Overdrive" by Bogart VGM, CC-BY 3.0 (https://creativecommons.org/licenses/by/3.0/).
+  https://opengameart.org/content/maximum-overdrive
 
 ## Software
 - three.js by Ricardo Cabello (mrdoob) and contributors, MIT License. https://threejs.org

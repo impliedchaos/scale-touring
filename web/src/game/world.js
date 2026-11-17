@@ -22,11 +22,12 @@ export async function createWorld({ site = null, day = false, weather = 'clear',
   scene.add(moon);
 
   const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.3, 6000);
-  addEventListener('resize', () => {
+  const onResize = () => {
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
-  });
+  };
+  addEventListener('resize', onResize);
 
   const course = await loadCourse(site ? `track/${site}/` : 'track/');
   const path = new TrackPath(course);
@@ -55,7 +56,26 @@ export async function createWorld({ site = null, day = false, weather = 'clear',
   const wx = applyWeather({ scene, renderer, road, day, kind: weather });
   const terrain = scene.getObjectByName('terrain');
   const moonShadow = shadows ? new MoonShadow(scene, moon, hemi, { day, overcast: !!(wx.fog || wx.rain), renderer, course, terrain }) : null;
-  return { renderer, scene, camera, course, path, heightAt, railAt, gutterAt, day, weather: wx, shadows, moonShadow };
+  /** Throw the whole world away (swapping place without reloading the page): GPU memory, the canvas and its GL context. */
+  const dispose = () => {
+    removeEventListener('resize', onResize);
+    renderer.setAnimationLoop(null);
+    const seen = new Set();
+    scene.traverse((o) => {
+      o.geometry?.dispose();
+      o.shadow?.map?.dispose();
+      for (const m of [].concat(o.material || [])) {
+        for (const v of Object.values(m)) if (v?.isTexture && !seen.has(v)) { seen.add(v); v.dispose(); }
+        m.dispose();
+      }
+    });
+    moonShadow?._rt?.dispose();
+    scene.clear();
+    renderer.dispose();
+    renderer.forceContextLoss();
+    renderer.domElement.remove();
+  };
+  return { renderer, scene, camera, course, path, heightAt, railAt, gutterAt, day, weather: wx, shadows, moonShadow, dispose };
 }
 
 // Moon shadows come from two maps: a coarse one of the whole mountain, drawn once (nothing it shades ever moves), and

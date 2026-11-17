@@ -36,6 +36,8 @@ PATHS = {"footway": 1.6, "path": 1.3, "pedestrian": 3.0, "cycleway": 2.0, "steps
 WITH_PATHS = "--paths" in sys.argv
 if WITH_PATHS: WIDTH.update(PATHS)
 INSIDE = 1.0            # cut side roads this far inside the course's edge, so they tuck under it
+# OSM ways left out on purpose (per site): spurs that look bad next to the route
+DROP = {"amalfi": {736525260, 147082667, 378891196}}.get(SITE, set())   # a driveway by the long tunnel; SP154 spur beside the bridge at s~10330
 BLEND = 30.0            # metres over which a side road eases from the course's height onto the ground
 
 course = json.load(open(os.path.join(TRACK, "course.json")))
@@ -99,7 +101,7 @@ def main():
     for el in elements:
         if el["type"] != "way" or len(el.get("geometry", [])) < 2: continue
         hw = el.get("tags", {}).get("highway")
-        if hw not in WIDTH: continue
+        if hw not in WIDTH or el["id"] in DROP: continue
         w = WIDTH[hw]
         p = resample(np.array([local(g["lat"], g["lon"]) for g in el["geometry"]]))
         inbox = (p[:, 0] > xa) & (p[:, 0] < xb) & (p[:, 1] > za) & (p[:, 1] < zb)

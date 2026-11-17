@@ -984,7 +984,8 @@ export function buildBridges(path, course, heightAt) {
 
 // ---------------------------------------------------------------- tunnels
 
-const TUN = { WALL: 1.5, EXT: 4, CUT: 14, FRAME: 1.1, DEPTH: 1.4 };
+// SQUASH: the arch is an ellipse this much lower than it is wide (a full semicircle over a 9 m road is ~6 m tall and pokes out of thin hills)
+const TUN = { WALL: 1.5, EXT: 4, CUT: 14, FRAME: 1.1, DEPTH: 1.4, SQUASH: 0.7 };
 
 /** Where each tunnel in `course.tunnels` ([[s0, s1], ...] metres of s, the part well inside the hill) opens: one entry per
  *  portal, with the point on the road, the horizontal direction into the hill, the road's rise per metre that way and the arch
@@ -1023,7 +1024,7 @@ for (int i = 0; i < ${n}; i++) {
   vec2 d = vWP.xz - uPA[i].xz;
   float al = dot(d, uPB[i].xy), u = dot(d, vec2(-uPB[i].y, uPB[i].x));
   if (al > -0.5 && al < uPB[i].z) {
-    float v = vWP.y - (uPA[i].y + uPB[i].w * al), R = uPA[i].w - 0.05, w = v - ${TUN.WALL.toFixed(2)};
+    float v = vWP.y - (uPA[i].y + uPB[i].w * al), R = uPA[i].w - 0.05, w = (v - ${TUN.WALL.toFixed(2)}) / ${TUN.SQUASH.toFixed(2)};
     if (v > 0.0 && ((w < 0.0 && abs(u) < R) || u * u + w * w < R * R)) discard;
   }
 }`);
@@ -1039,7 +1040,7 @@ export function buildTunnels(path, course) {
   const R = path.half + 0.9, o = {};
   const profile = (r, low = 0) => {                      // the arch's cross-section as (right, up), left foot round to right foot
     const p = [[-r, low], [-r, TUN.WALL]];
-    for (let k = 1; k < 12; k++) { const t = Math.PI * (1 - k / 12); p.push([r * Math.cos(t), TUN.WALL + r * Math.sin(t)]); }
+    for (let k = 1; k < 12; k++) { const t = Math.PI * (1 - k / 12); p.push([r * Math.cos(t), TUN.WALL + r * TUN.SQUASH * Math.sin(t)]); }
     p.push([r, TUN.WALL], [r, low]);
     return p;
   };

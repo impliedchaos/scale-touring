@@ -88,7 +88,14 @@ export class TiltShift {
     this.focus = 0.5; this.focusZ = 100; this.strength = 0; this.first = true;
     this._v = new THREE.Vector3();
     this.resize();
-    addEventListener('resize', () => this.resize());
+    this._onResize = () => this.resize();
+    addEventListener('resize', this._onResize);
+  }
+
+  dispose() {
+    removeEventListener('resize', this._onResize);
+    this.scene.dispose(); this.scene.depthTexture?.dispose();
+    this.composer.dispose();
   }
 
   resize() {

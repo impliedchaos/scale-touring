@@ -10,22 +10,31 @@ export const PLACES = [
   { id: 'rio', label: 'Rio de Janeiro' },
   { id: 'hk', label: 'Hong Kong' },
   { id: 'bigsur', label: 'Big Sur, California' },
-  { id: 'amalfi', label: 'Amalfi Coast, Italy (WIP)' },
+  { id: 'amalfi', label: 'Amalfi Coast, Italy' },
 ];
 export const PACES = [0.25, 0.5, 1, 2, 4, 8];
 
 export const DEFAULTS = {
-  site: '', day: false, weather: 'clear', car: 'ae86', tilt: 2, shadows: 2, uphill: true,  // WORLD
-  pace: 1, text: true, fps: false, engine: false, music: false,                                 // LIVE
+  site: 'rio', day: false, weather: 'clear', car: 'rx7', tilt: 2, shadows: 2, uphill: true,  // WORLD
+  pace: 1, text: true, fps: false, engine: 0, music: 0, song: '',  // LIVE (engine, music: volume 0..1, 0 = off; song: a file in music/playlist.json, '' = the playlist's order)
 };
-export const LIVE = ['pace', 'text', 'fps', 'engine', 'music'];
+export const LIVE = ['pace', 'text', 'fps', 'engine', 'music', 'song'];
 
 const KEY = 'touring-options';
 const OFF = new Set(['0', 'false', 'off', 'no', 'none']);
 // URL parameter behind each option, for stripping them off the address when the menu reloads the page
-export const URL_KEYS = ['site', 'day', 'weather', 'car', 'tiltshift', 'shadows', 'uphill', 'fps', 'engine', 'music'];
+export const URL_KEYS = ['site', 'day', 'weather', 'car', 'tiltshift', 'shadows', 'uphill', 'fps', 'engine', 'music', 'song'];
 
 const flag = (params, name) => { const v = params.get(name); return v !== null && !OFF.has(v); };
+
+/** A volume parameter: 0..1 (or 0..100 as a percentage); a bare flag means full volume, off/0/false means silent. */
+function volume(params, name) {
+  const v = params.get(name);
+  if (v === null || OFF.has(v)) return 0;
+  const n = v === '' ? 1 : +v;
+  if (!Number.isFinite(n)) return 1;
+  return Math.min(Math.max(n > 1 ? n / 100 : n, 0), 1);
+}
 
 export function loadOptions(params) {
   let saved = {};
@@ -36,13 +45,14 @@ export function loadOptions(params) {
   if (params.has('site')) o.site = params.get('site') || '';
   if (params.has('day')) o.day = flag(params, 'day');
   if (WEATHER[params.get('weather')]) o.weather = params.get('weather');
-  if (params.has('car')) o.car = flag(params, 'car') ? params.get('car') || 'ae86' : '';
+  if (params.has('car')) o.car = flag(params, 'car') ? params.get('car') || 'rx7' : '';
   if (params.has('tiltshift')) o.tilt = flag(params, 'tiltshift') ? Math.min(Math.max(Math.round(+(params.get('tiltshift') || 2)) || 0, 0), 2) : 0;
   if (params.has('shadows')) o.shadows = flag(params, 'shadows') ? Math.min(Math.max(Math.round(+(params.get('shadows') || 2)) || 0, 0), 2) : 0;
   if (params.has('uphill')) o.uphill = flag(params, 'uphill');
   if (params.has('fps')) o.fps = flag(params, 'fps');
-  if (params.has('engine')) o.engine = flag(params, 'engine');
-  if (params.has('music')) o.music = flag(params, 'music');
+  if (params.has('engine')) o.engine = volume(params, 'engine');
+  if (params.has('music')) o.music = volume(params, 'music');
+  if (params.has('song')) o.song = params.get('song') || '';
 
   if (!PLACES.some((p) => p.id === o.site) && !params.has('site')) o.site = '';
   if (!PACES.includes(o.pace)) o.pace = 1;
@@ -53,10 +63,3 @@ export function saveOptions(o) {
   try { localStorage.setItem(KEY, JSON.stringify(o)); } catch { /* not remembered; fine */ }
 }
 
-/** Save, drop the option parameters from the address (they'd override the new choices), and reload. */
-export function applyAndReload(o) {
-  saveOptions(o);
-  const url = new URL(location.href);
-  for (const k of URL_KEYS) url.searchParams.delete(k);
-  location.replace(url);
-}

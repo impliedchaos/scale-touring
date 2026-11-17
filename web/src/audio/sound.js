@@ -79,7 +79,8 @@ export class EngineVoice {
     // intake roar
     this.intakeBp = filter(ctx, 'bandpass', 900, 1.2);
     this.intakeGain = gain(ctx, 0);
-    loopNoise(ctx, noise).connect(this.intakeBp).connect(this.intakeGain).connect(this.out);
+    this.noiseSrc = loopNoise(ctx, noise);
+    this.noiseSrc.connect(this.intakeBp).connect(this.intakeGain).connect(this.out);
     // turbo whistle
     if (turbo) {
       this.turbo = ctx.createOscillator();
@@ -91,6 +92,13 @@ export class EngineVoice {
     }
     this.e = null;
     this.level = 1;
+  }
+
+  /** Stop and disconnect the voice (swapping the car). */
+  dispose() {
+    try { this.noiseSrc.stop(); this.turbo?.stop(); } catch { /* already stopped */ }
+    this.node.disconnect(); this.out.disconnect();
+    if (this.core) this.node.onaudioprocess = null;
   }
 
   set(name, v) {
@@ -246,6 +254,15 @@ class Music {
     return true;
   }
   pause() { this.el.pause(); }
+  /** Switch to track `file` now (and play it, unless paused: the next `start` plays it then). */
+  async playFile(file) {
+    await this.loaded;
+    const i = this.list.findIndex((t) => t.file === file);
+    if (i < 0 || (i === this.i && this.el.src)) return;
+    const was = !this.el.paused;
+    this.load(i);
+    if (was) this.el.play().catch(() => {});
+  }
   load(i) {
     this.i = i;
     this.el.src = `music/${this.list[i].file}`;
@@ -274,6 +291,7 @@ export class Sound {
   constructor(params, { onTrack } = {}) {
     this.weather = { rain: 0, wet: 0 }; // set by the race: 0..1 each
     this._hush = { paused: false, title: false }; // reasons the sfx bus is silent
+    this._vol = { sfx: 1, music: 1 };           // the volume sliders
     this.p = params;
     this.onTrack = onTrack;
     this.ctx = null;
@@ -310,9 +328,8 @@ export class Sound {
       this.rivalPan = ctx.createPanner();
       Object.assign(this.rivalPan, { panningModel: 'equalpower', distanceModel: 'inverse', refDistance: 8, rolloffFactor: 1, maxDistance: 2000 });
       this.rivalPan.connect(this.sfx);
-      const rc = RIVAL_ENGINES[rivalId] || RIVAL_ENGINES.r32;
-      this.rivalTurbo = rc.turbo;
-      this.rivalEngine = new EngineVoice(ctx, this.rivalPan, nb, { worklet, ...rc });
+      this.rivalId = null;
+      this.setRival(rivalId);
       this.screech = new Screech(ctx, this.sfx, nb);
       this.rivalScreech = new Screech(ctx, this.rivalPan, nb);
       this.grind = new Grind(ctx, this.sfx, nb);
@@ -327,13 +344,31 @@ export class Sound {
     })());
   }
 
+  /** The positional engine voice for car `id` (replaces the old one, so the page needn't reload to change car). */
+  setRival(id) {
+    if (id === this.rivalId) return;
+    this.rivalId = id;
+    const rc = RIVAL_ENGINES[id] || RIVAL_ENGINES.r32;
+    this.rivalTurbo = rc.turbo;
+    this.rivalEngine?.dispose();
+    this.rivalEngine = new EngineVoice(this.ctx, this.rivalPan, this.noise, { worklet: this.worklet, ...rc });
+    if (this.ready) this.rivalEngine.setTimbre({ ...this.p.engine, ...this.p.rival });
+  }
+
   resume() { if (this.ctx && this.ctx.state !== 'running') this.ctx.resume(); }
 
   /** Pause menu: fade out engines/tyres/wind (they'd hold their last note otherwise); music keeps playing. */
   set paused(on) { this._hush.paused = on; this._fadeSfx(); }
   /** Title screen: only the music (the synthesized engines, wind etc. stay silent until the race starts). */
   set titleQuiet(on) { this._hush.title = on; this._fadeSfx(); }
-  _sfxLevel() { return this._hush.paused || this._hush.title ? 0 : this.p.mix.sfx; }
+  _sfxLevel() { return this._hush.paused || this._hush.title ? 0 : this.p.mix.sfx * this._vol.sfx; }
+  /** The player's volume sliders, 0..1: `sfx` (engines, tyres, wind, weather) and `music`. */
+  volumes(sfx = 1, music = 1) {
+    this._vol = { sfx, music };
+    if (!this.ready) return;
+    this._fadeSfx();
+    this.musicBus.gain.setTargetAtTime(this.p.mix.music * music, this.ctx.currentTime, 0.05);
+  }
   _fadeSfx() {
     if (!this.ready) return; // applyParams picks it up once audio starts
     const g = this.sfx.gain, t = this.ctx.currentTime;
@@ -345,7 +380,7 @@ export class Sound {
     const P = this.p;
     this.master.gain.value = P.mix.master;
     this.sfx.gain.value = this._sfxLevel();
-    this.musicBus.gain.value = P.mix.music;
+    this.musicBus.gain.value = P.mix.music * this._vol.music;
     this.fx.gain.value = P.fx.volume;
     this.engine.setTimbre(P.engine);
     this.rivalEngine.setTimbre({ ...P.engine, ...P.rival });

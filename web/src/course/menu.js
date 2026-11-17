@@ -1,14 +1,14 @@
 // The options menu (Esc, or the ☰ button). Rows are either choices (←/→ or click to change) or actions (Enter or click).
-// LIVE options apply as you change them; WORLD options are staged, and an "Apply" row appears to reload with them.
+// Every option applies as you change it: LIVE ones at once, WORLD ones (place, time, car...) by rebuilding the scene in place.
 // Keyboard: ↑↓ row · ←→ change · Enter · Esc close/back.  Gamepad: D-pad · A · B · START opens.
 import { creditsHtml } from '../game/credits.js';
 import { LIVE } from './options.js';
 
 export class Menu {
-  /** `rows`: [{ key, label, values: [[value, label], ...] }]; `settings`: the live options object (mutated for LIVE keys);
-   *  `onApply(staged)`: reload with the staged WORLD options; `onLive(key)`: a LIVE option changed. */
-  constructor({ rows, settings, onApply, onLive }) {
-    Object.assign(this, { rows, settings, onApply, onLive, open: false, sel: 0, showCredits: false, drop: null });
+  /** `rows`: [{ key, label, values: [[value, label], ...] }] (or `slider: true`: 0..1 in 5% steps); `settings`: the live options object (mutated for LIVE keys);
+   *  `onWorld(key)`: a WORLD option changed (rebuild the scene); `onLive(key)`: a LIVE option changed. */
+  constructor({ rows, settings, onWorld, onLive }) {
+    Object.assign(this, { rows, settings, onWorld, onLive, open: false, sel: 0, showCredits: false, drop: null });
     this.staged = { ...settings };
     this.el = document.createElement('div');
     this.el.id = 'menu';
@@ -20,9 +20,16 @@ export class Menu {
     this.el.querySelector('.panel').addEventListener('scroll', () => { if (this.drop) { this.drop = null; this.render(); } });
     this.el.addEventListener('pointerdown', (e) => { if (e.target === this.el) this.toggle(false); });
     document.body.appendChild(this.el);
+    this.ul.addEventListener('input', (e) => {   // dragging a slider: update live without rebuilding the row under the pointer
+      const r = e.target; if (!r.matches('input[type=range]')) return;
+      const it = this.rows.find((x) => x.key === r.dataset.key), pct = +r.value;
+      this.set(it, pct / 100);
+      r.nextElementSibling.textContent = pct ? `${pct}%` : 'Off';
+    });
     this.ul.addEventListener('click', (e) => {
       const li = e.target.closest('li');
       if (!li) return;
+      if (e.target.matches('input[type=range]')) { this.sel = +li.dataset.i; this.render(); return; }
       if (this.drop && +li.dataset.i === this.drop.i) { this.drop = null; this.render(); return; } // its own row again: close
       this.drop = null;
       this.sel = +li.dataset.i;
@@ -30,13 +37,10 @@ export class Menu {
     });
   }
 
-  get dirty() { return this.rows.some((r) => !LIVE.includes(r.key) && this.staged[r.key] !== this.settings[r.key]); }
-
-  /** The rows as they're listed: the choices, then Credits, Apply (only when something's staged) and Resume. */
+  /** The rows as they're listed: the choices, then Credits and Resume. */
   items() {
     const items = this.rows.map((r) => ({ ...r, kind: 'choice' }));
     items.push({ kind: 'credits', label: 'Credits' });
-    if (this.dirty) items.push({ kind: 'apply', label: 'Apply changes (reloads)' });
     items.push({ kind: 'resume', label: 'Resume' });
     return items;
   }
@@ -56,11 +60,13 @@ export class Menu {
     this.sel = Math.min(this.sel, items.length - 1);
     this.ul.innerHTML = items.map((it, i) => {
       let v = '';
-      if (it.kind === 'choice') {
+      if (it.kind === 'choice' && it.slider) {
+        const pct = Math.round((this.staged[it.key] || 0) * 100);
+        v = `<span class="v slider"><input type="range" min="0" max="100" step="5" value="${pct}" data-key="${it.key}" tabindex="-1"><b>${pct ? pct + '%' : 'Off'}</b></span>`;
+      } else if (it.kind === 'choice') {
         const cur = it.values.find(([val]) => val === this.staged[it.key]);
-        const changed = !LIVE.includes(it.key) && this.staged[it.key] !== this.settings[it.key];
         const name = cur ? cur[1] : String(this.staged[it.key]);
-        v = `<span class="v${changed ? ' changed' : ''}">${name} <i>${this.drop?.i === i ? '▴' : this.select(it) ? '▾' : '‹›'}</i></span>`;
+        v = `<span class="v">${name} <i>${this.drop?.i === i ? '▴' : this.select(it) ? '▾' : '‹›'}</i></span>`;
       }
       return `<li data-i="${i}" class="${i === this.sel ? 'sel ' : ''}kind-${it.kind}"><span class="k">${it.label}</span>${v}</li>`;
     }).join('');
@@ -95,13 +101,16 @@ export class Menu {
   }
 
   /** Choices with more than two values pick from a drop-down; on/off ones just flip. */
-  select(it) { return it.values.length > 2; }
+  select(it) { return !it.slider && it.values.length > 2; }
 
-  /** Set a choice (LIVE ones take effect at once), and close any drop-down. */
+  /** Set a choice (it takes effect at once), and close any drop-down. */
   set(it, value) {
+    const prev = this.settings[it.key];
     this.staged[it.key] = value;
-    if (LIVE.includes(it.key)) { this.settings[it.key] = value; this.onLive(it.key); }
+    this.settings[it.key] = value;
     this.drop = null;
+    if (value === prev) return;
+    if (LIVE.includes(it.key)) this.onLive(it.key); else this.onWorld(it.key);
   }
 
   /** Choose option `o` of the open drop-down. */
@@ -117,12 +126,12 @@ export class Menu {
     if (!it) return;
     if (it.kind === 'choice') {
       if (!d) return;
+      if (it.slider) { this.set(it, Math.min(Math.max(Math.round(((this.staged[it.key] || 0) + d * 0.05) * 20) / 20, 0), 1)); this.render(); return; }
       const i = it.values.findIndex(([v]) => v === this.staged[it.key]);
       if (this.select(it) && open) { this.drop = { i: this.sel, o: Math.max(i, 0) }; this.render(); return; } // Enter / click opens it
       this.set(it, it.values[(i + d + it.values.length) % it.values.length][0]);
     } else if (d < 0) return;
     else if (it.kind === 'credits') this.showCredits = true;
-    else if (it.kind === 'apply') { this.onApply(this.staged); return; }
     else if (it.kind === 'resume') { this.toggle(false); return; }
     this.render();
   }
