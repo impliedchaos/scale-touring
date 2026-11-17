@@ -6,7 +6,7 @@
 
 The sidecar JSON (written by tools/fetch_*_dem.py) names the grid CRS, the north-west corner (x0, y0),
 the spacing and the source credit. Supported CRS: EPSG:31983 (SIRGAS 2000 / UTM 23S), EPSG:2326
-(Hong Kong 1980 Grid) EPSG:26910 (NAD83 / UTM 10N) and EPSG:32632 (WGS 84 / UTM 32N). Add one by writing a `lonlat -> (x, y)` function and registering it in CRS.
+(Hong Kong 1980 Grid) EPSG:26910 (NAD83 / UTM 10N) and EPSG:32632 (WGS 84 / UTM 32N) and EPSG:3857 (Web Mercator, the GSI tiles: `step` is in mercator metres, not ground metres). Add one by writing a `lonlat -> (x, y)` function and registering it in CRS.
 
 The HK1980 datum is ~100 m off WGS84, so it goes through a 7-parameter Helmert shift. Parameters and
 rotation convention were checked against the HK Geodetic Survey's official transform service
@@ -94,7 +94,14 @@ def hk1980(lon, lat):
     return _tm(lo, la, INTL1924, 22.3121333333, 114.1785555556, 1.0, 836694.05, 819069.80)
 
 
-CRS = {"EPSG:31983": utm23s, "EPSG:2326": hk1980, "EPSG:26910": utm10n, "EPSG:32632": utm32n}
+def web_mercator(lon, lat):
+    """EPSG:3857 (spherical Web Mercator, what slippy-map tiles use). Ground metres are 1/cos(lat) smaller than these units."""
+    lon, lat = np.broadcast_arrays(np.asarray(lon, float), np.asarray(lat, float))
+    R = 6378137.0
+    return R * np.radians(lon), R * np.log(np.tan(np.pi / 4 + np.radians(lat) / 2))
+
+
+CRS = {"EPSG:31983": utm23s, "EPSG:2326": hk1980, "EPSG:26910": utm10n, "EPSG:32632": utm32n, "EPSG:3857": web_mercator}
 
 
 class Dem:
