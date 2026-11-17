@@ -1,7 +1,7 @@
 // Renderer, scene, lighting and the mountain. Shared by the fly-by (and anything else that needs the course).
 import * as THREE from 'three';
 import { applyWeather } from './weather.js';
-import { loadCourse, TrackPath, makeHeightAt, buildRoad, buildGuardrails, gutterFlags, buildGutters, buildTerrain, buildForest, buildUndergrowth, buildBuildings } from '../course/track.js';
+import { loadCourse, TrackPath, makeHeightAt, buildRoad, buildGuardrails, gutterFlags, buildGutters, buildTerrain, buildForest, buildUndergrowth, buildBuildings, buildBridges, buildTunnels, tunnelPortals } from '../course/track.js';
 
 // `shadows`: get the scene ready for headlight shadows (see castShadows below). Free until a car's shadow spot is
 // switched on (CarRig setShadow): three.js only draws shadow maps for lights that cast them.
@@ -33,8 +33,16 @@ export async function createWorld({ site = null, day = false, weather = 'clear',
   const heightAt = makeHeightAt(course);
   const road = buildRoad(path);
   const gutters = gutterFlags(path, course, heightAt);
-  scene.add(buildTerrain(course), road, buildGuardrails(path, course), buildGutters(path, gutters),
+  scene.add(buildTerrain(course, tunnelPortals(path, course)), road, buildBridges(path, course, heightAt), buildTunnels(path, course), buildGuardrails(path, course), buildGutters(path, gutters),
   buildForest(path, heightAt, { ...forest, ...course.forest, buildings: course.buildings }), buildBuildings(course.buildings, { day: day }));
+  if (course.sea != null) { // sea level (course.json `sea`, metres): a flat translucent sheet over the whole terrain; the DEM's bay lies below it
+    const { nx, nz, x0, z0, cell } = course.terrain;
+    const sea = new THREE.Mesh(new THREE.PlaneGeometry(nx * cell, nz * cell).rotateX(-Math.PI / 2), seaMaterial(day));
+    sea.position.set(x0 + nx * cell / 2, course.sea, z0 + nz * cell / 2);
+    sea.name = 'sea';
+    sea.renderOrder = 1; // after the opaque world, so the shallows show the sand through it
+    scene.add(sea);
+  }
   if (undergrowth) scene.add(buildUndergrowth(path, heightAt, { buildings: course.buildings }));
   if (shadows) castShadows(renderer, scene);
 
@@ -203,7 +211,7 @@ class MoonShadow {
 function castShadows(renderer, scene) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
-  const CAST = new Set(['forest', 'guardrails', 'buildings']);
+  const CAST = new Set(['forest', 'guardrails', 'buildings', 'bridges']);
   for (const top of scene.children) {
     const cast = CAST.has(top.name);
     top.traverse((o) => {
@@ -212,4 +220,43 @@ function castShadows(renderer, scene) {
       o.castShadow = cast;
     });
   }
+}
+
+
+// The sea: translucent (more so looking straight down, glassier at a grazing angle), shiny, and its normal is a sum of
+// travelling sine waves, so the moon / sun glints and breaks up as the water moves. Waves are in the normal only; the sheet stays flat.
+function seaMaterial(day) {
+  const mat = new THREE.MeshPhongMaterial({
+    color: day ? 0x2f9298 : 0x0d3a42, specular: day ? 0xffffff : 0x9db8ff, shininess: 90,
+    emissive: day ? 0x000000 : 0x03101a, transparent: true, opacity: 0.8, depthWrite: false,
+  });
+  const time = { value: 0 };
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.seaTime = time;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vSea;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\n  vSea = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `#include <common>
+varying vec3 vSea;
+uniform float seaTime;
+// slope of a few crossing waves: amplitude, wavelength (m), direction (rad), speed (rad/s)
+vec2 wave(vec2 p, float a, float len, float dir, float sp) {
+  float k = 6.2831853 / len;
+  vec2 d = vec2(cos(dir), sin(dir));
+  return d * a * k * cos(dot(p, d) * k + seaTime * sp);
+}`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+  {
+    vec2 p = vSea.xz, g = vec2(0.0);
+    g += wave(p, 0.55, 52.0, 0.4, 0.8) + wave(p, 0.38, 29.0, 1.9, 1.1) + wave(p, 0.16, 15.0, -0.9, 1.5) + wave(p, 0.05, 8.0, 2.7, 2.0);
+    vec3 nw = normalize(vec3(-g.x, 1.0, -g.y));
+    normal = normalize((viewMatrix * vec4(nw, 0.0)).xyz);
+    float fres = pow(1.0 - clamp(dot(normalize(vViewPosition), normal), 0.0, 1.0), 3.0);
+    diffuseColor.a = mix(0.45, 0.92, fres);
+  }`);
+  };
+  const t0 = performance.now();
+  mat.onBeforeRender = () => { time.value = (performance.now() - t0) / 1000; };
+  return mat;
 }

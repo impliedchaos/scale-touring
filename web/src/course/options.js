@@ -9,6 +9,8 @@ export const PLACES = [
   { id: '', label: 'Mt. Haruna, Japan' },
   { id: 'rio', label: 'Rio de Janeiro' },
   { id: 'hk', label: 'Hong Kong' },
+  { id: 'bigsur', label: 'Big Sur, California' },
+  { id: 'amalfi', label: 'Amalfi Coast, Italy (WIP)' },
 ];
 export const PACES = [0.25, 0.5, 1, 2, 4, 8];
 

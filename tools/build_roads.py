@@ -3,11 +3,13 @@ Route 33 beyond our course.
 
     python3 tools/build_roads.py            # uses data/raw/roads_osm.json, fetching it once if missing
     python3 tools/build_roads.py --fetch    # refresh it from Overpass
+    python3 tools/build_roads.py --site rio --paths --fetch   # also footpaths, steps, pedestrian streets and cycleways
 
 Inputs : data/raw/roads_osm.json (Overpass: every drivable highway way inside the terrain box)
          web/public/track/course.json + terrain.bin (from tools/build_track.py: frame, road, ground heights)
 Output : web/public/track/roads.json
-         {credits, roads: [{w: width m, k: 0 paved / 1 track, p: [x, y, z, ...] centreline every 2 m}]}
+         {credits, roads: [{w: width m, k: 0 paved / 1 track / 2 footpath / 3 steps, p: [x, y, z, ...] centreline every 2 m}]}
+With --paths the narrow ways (k 2 and 3: Rocinha's alleys and stairs) are drawn too; they don't push buildings aside.
 
 Where a road meets our course it's cut a little way inside the course's edge, and its last stretch eases onto the
 course's height (our road is a smoothed copy of OSM's and sits on its own cut), so it joins underneath. Everywhere
@@ -29,6 +31,10 @@ STEP = 2.0
 WIDTH = {"motorway": 7.0, "trunk": 7.0, "primary": 7.0, "secondary": 6.5, "tertiary": 6.0, "unclassified": 4.5,
          "residential": 4.5, "living_street": 4.0, "service": 3.5, "track": 3.0}
 for k in ("motorway", "trunk", "primary", "secondary", "tertiary"): WIDTH[k + "_link"] = 5.0
+# only with --paths: pedestrian ways, thin enough that they sit on the ground like a painted line
+PATHS = {"footway": 1.6, "path": 1.3, "pedestrian": 3.0, "cycleway": 2.0, "steps": 1.6, "corridor": 1.6}
+WITH_PATHS = "--paths" in sys.argv
+if WITH_PATHS: WIDTH.update(PATHS)
 INSIDE = 1.0            # cut side roads this far inside the course's edge, so they tuck under it
 BLEND = 30.0            # metres over which a side road eases from the course's height onto the ground
 
@@ -51,9 +57,10 @@ def fetch():
     bbox = f"{s:.5f},{w:.5f},{n:.5f},{e:.5f}"
     kinds = "|".join(sorted(WIDTH))
     q = f'[out:json][timeout:90];way["highway"~"^({kinds})$"]({bbox});out geom tags;'
-    req = urllib.request.Request("https://overpass-api.de/api/interpreter",
+    req = urllib.request.Request(os.environ.get("OVERPASS", "https://overpass-api.de/api/interpreter"),
                                  data=urllib.parse.urlencode({"data": q}).encode(), headers=UA)
-    with urllib.request.urlopen(req, timeout=120) as r, open(RAW, "wb") as f: f.write(r.read())
+    with urllib.request.urlopen(req, timeout=120) as r, open(RAW + ".part", "wb") as f: f.write(r.read())
+    os.replace(RAW + ".part", RAW)
     print("fetched", RAW)
 
 
@@ -119,14 +126,14 @@ def main():
             blend[dq > HALF + BLEND] = 0
             y = y * (1 - blend) + P[kq, 1] * blend
             y[dq < HALF] = P[kq[dq < HALF], 1] - 0.05
-            out.append({"w": w, "k": int(hw == "track"),
+            out.append({"w": w, "k": 3 if hw == "steps" else 2 if hw in PATHS else int(hw == "track"),
                         "p": [round(float(v), 2) for v in np.stack([q[:, 0], y, q[:, 1]], 1).ravel()]})
             total += STEP * (len(q) - 1)
 
     doc = {"credits": ["Other roads: © OpenStreetMap contributors (ODbL)"], "roads": out}
     path = os.path.join(TRACK, "roads.json")
     json.dump(doc, open(path, "w"), separators=(",", ":"))
-    print(f"{len(out)} road pieces, {total / 1000:.1f} km ({sum(r['k'] for r in out)} tracks); "
+    print(f"{len(out)} road pieces, {total / 1000:.1f} km ({sum(r['k'] == 1 for r in out)} tracks, {sum(r['k'] >= 2 for r in out)} paths); "
           f"{os.path.getsize(path) / 1024:.0f} KB")
 
 

@@ -16,7 +16,7 @@ the latitude the metre scale is taken at, which build_roads/build_buildings use 
 """
 import argparse, json, math, os, sys
 import numpy as np
-from scipy.ndimage import gaussian_filter, gaussian_filter1d, map_coordinates
+from scipy.ndimage import binary_erosion, gaussian_filter, gaussian_filter1d, map_coordinates
 from scipy.spatial import cKDTree
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -25,10 +25,12 @@ import dem as demlib
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SITES = {
-    "rio": dict(title=["ESTRADA DA GÁVEA", "ROCINHA · RIO DE JANEIRO"], start_name="the crest", route="data/rio_route.json", dem="assets/rio/dem_gavea", crest=True,
+    "rio": dict(title=["ESTRADA DA GÁVEA", "ROCINHA → AV. PREF. MENDES DE MORAIS · RIO DE JANEIRO"], start_name="the crest", route="data/rio_route.json", dem="assets/rio/dem_gavea", crest=True, crest_extra=520,  # past the crest: through the left-hand hairpin, ending on the short straight after it
                 cell=6.0, margin=500.0, dem_smooth=0.0, flat_r=8.0, blend_r=28.0, y_smooth=15.0,
-                forest=dict(count=0, young=0, wideBroadleaf=16000, palms=3500, foliage=dict(hue=0.30, span=0.05)),
-                ground=dict(green="#2f5a2a", scrub="#7d8442", rock="#7b6f62", rockFlat=0.82),
+                forest=dict(count=0, young=0, wideBroadleaf=16000, palms=3500, foliage=dict(hue=0.30, span=0.05),
+                            sparse=dict(below=12, palmRoad=15)),  # São Conrado coastal plain (ground under 12 m): no trees, only a line of palms by the road
+                sea=0.4,                                    # sea level in metres: the bay is a flat 0.1 m in the DEM
+                ground=dict(green="#2f5a2a", scrub="#7d8442", rock="#7b6f62", rockFlat=0.82, sand="#d2c08f", sandBelow=2.5),
                 credits=["Terrain: Instituto Pereira Passos, Prefeitura da Cidade do Rio de Janeiro, "
                          "Modelo Digital de Terreno LiDAR 2019 (CC BY 4.0)",
                          "Road: © OpenStreetMap contributors (ODbL)"]),
@@ -39,6 +41,22 @@ SITES = {
                credits=["Terrain: Civil Engineering and Development Department, HKSAR Government, "
                         "LiDAR 2020 Digital Terrain Model, via CSDI / DATA.GOV.HK",
                         "Road: © OpenStreetMap contributors (ODbL)"]),
+    "bigsur": dict(title=["PACIFIC COAST HIGHWAY", "BIG SUR · BIXBY CREEK BRIDGE · CALIFORNIA"], start_name="the north end", route="data/bigsur_route.json",
+                   dem="assets/bigsur/dem_bigsur", crest=False,   # stored north to south: the default (uphill) drive heads north with the sea on the left
+                   cell=6.0, margin=500.0, dem_smooth=0.0, flat_r=8.0, blend_r=28.0, y_smooth=15.0,
+                   forest=dict(count=120, young=0, roadsideBroadleaf=60, wideBroadleaf=900, wideBias=1.0, foliage=dict(hue=0.24, span=0.05), sparse=dict(below=2.0, palmRoad=0)),
+                   sea=1.3,
+                   ground=dict(green="#5c6a35", scrub="#7a6f3c", rock="#8a7c66", rockFlat=0.78, sand="#d8c8a0", sandBelow=2.0),
+                   credits=["Terrain: U.S. Geological Survey, 3D Elevation Program (3DEP) 1 m DEM, CA_AZ_FEMA_R9_Lidar_2017_D18 (public domain)",
+                            "Road: © OpenStreetMap contributors (ODbL)"]),
+    "amalfi": dict(title=["COSTIERA AMALFITANA", "STRADA STATALE 163 · POSITANO → FURORE · ITALY"], start_name="Positano", route="data/amalfi_route.json",
+                   dem="assets/amalfi/dem_amalfi", crest=False,   # stored west to east: the default (uphill) drive heads west with the sea on the left, into Positano
+                   cell=6.0, margin=500.0, dem_smooth=2.0, flat_r=8.0, blend_r=28.0, y_smooth=50.0,
+                   forest=dict(count=300, young=0, roadsideBroadleaf=250, wideBroadleaf=2500, wideBias=1.0, foliage=dict(hue=0.25, span=0.05), sparse=dict(below=3.0, palmRoad=0)),
+                   sea=0.3,
+                   ground=dict(green="#586a3a", scrub="#76733f", rock="#a39884", rockFlat=0.75, sand="#d8c8a0", sandBelow=2.0),
+                   credits=["Terrain: INGV TINITALY/1.1 10 m DEM (Tarquini et al., 2012), CC BY 4.0",
+                            "Road: © OpenStreetMap contributors (ODbL)"]),
 }
 
 STEP = 2.0                     # output centreline spacing (m)
@@ -70,6 +88,8 @@ def main():
     # ---- DEM (optionally smoothed) ----
     d = demlib.load(os.path.join(ROOT, cfg["dem"]))
     filled = d.filled()                                   # sea / gaps take the nearest land height
+    if cfg.get("sea") is not None:
+        filled[~np.isfinite(d.grid)] = 0.0                # ...except where the site has a sea: no data there is open water, not land
     if cfg["dem_smooth"] > 0:
         filled = gaussian_filter(filled, cfg["dem_smooth"] / d.step, mode="nearest")
     d = demlib.Dem(filled, d.meta)
@@ -90,14 +110,34 @@ def main():
     y = elev(lat0 - z / KZ, lon0 + x / KX)               # on the real road, before the polyline is smoothed
     if np.isnan(y).any():
         sys.exit("route runs off the DEM")
+    # Bridges (route["bridges"], from tools/stitch_hk_route.py): the DEM under a deck is the valley floor, so the deck runs level
+    # between its two ends instead, and the terrain below it is left uncarved (below)
+    deck = np.zeros(len(d1), bool)
+    for br in route.get("bridges", []):
+        ends = [int(np.argmin(np.hypot(x - (br[k][1] - lon0) * KX, z + (br[k][0] - lat0) * KZ))) for k in ("a", "b")]
+        ia, ib = sorted(ends)
+        y[ia:ib + 1] = np.linspace(y[ia], y[ib], ib - ia + 1)
+        deck[ia:ib + 1] = True
+    # Tunnels (route["tunnels"]): the DEM over a tunnel is the hill, so the road runs level between the portals, inside it, and the
+    # terrain above is kept (raised to a roof if the hill is thin); the car disappears into the hill and comes out the other side
+    tun = np.zeros(len(d1), bool)
+    for tn in route.get("tunnels", []):
+        ends = [int(np.argmin(np.hypot(x - (tn[k][1] - lon0) * KX, z + (tn[k][0] - lat0) * KZ))) for k in ("a", "b")]
+        ia, ib = sorted(ends)
+        y[ia:ib + 1] = np.linspace(y[ia], y[ib], ib - ia + 1)
+        tun[ia:ib + 1] = True
     x, z = gaussian_filter1d(x, XZ_SMOOTH, mode="nearest"), gaussian_filter1d(z, XZ_SMOOTH, mode="nearest")
     y = gaussian_filter1d(y, cfg["y_smooth"], mode="nearest")
-    start = int(np.argmax(y)) if cfg["crest"] else 0
-    x, y, z = x[start:], y[start:], z[start:]
+    start = max(int(np.argmax(y)) - int(cfg.get("crest_extra", 0)), 0) if cfg["crest"] else 0   # `crest_extra`: metres of road kept past the crest
+    x, y, z, deck, tun = x[start:], y[start:], z[start:], deck[start:], tun[start:]
 
     dd = np.r_[0, np.cumsum(np.hypot(np.diff(x), np.diff(z)))]
     ds = np.arange(0, dd[-1], STEP)
     x, y, z = np.interp(ds, dd, x), np.interp(ds, dd, y), np.interp(ds, dd, z)
+    deck = np.interp(ds, dd, deck.astype(float)) > 0.5
+    tun = np.interp(ds, dd, tun.astype(float)) > 0.5
+    tun_in = binary_erosion(tun, iterations=3)            # inside the hill; the last 6 m at each end is the portal cutting
+    deck_in = binary_erosion(deck, iterations=3)          # the deck proper: the last 6 m at each end are the abutment, on an embankment
     x0s, z0s = x[0], z[0]
     x, z = x - x0s, z - z0s
     finish = ds[-1] - RUNOFF
@@ -128,14 +168,18 @@ def main():
     t = np.clip((dist_r - cfg["flat_r"]) / (cfg["blend_r"] - cfg["flat_r"]), 0, 1)
     t = t * t * (3 - 2 * t)
     terrain = (road_level * (1 - t) + raw * t).astype(np.float32)
+    under = deck_in[idx]                                  # nodes nearest to a bridge deck: the valley stays as it is
+    terrain[under] = np.minimum(raw[under], y[idx][under] - 0.4)   # ...but never above the deck (the bridge slab, 1.3 m thick, hides this)
+    roof = tun_in[idx] & (dist_r < cfg["blend_r"])
+    terrain[roof] = np.maximum(raw[roof], y[idx][roof] + 6.0)   # the hill over a tunnel stays (and is at least a 6 m roof)
     # Where two legs of a hairpin run close, a grid triangle can span both and slope up through the lower road.
     # Nodes within a cell and a half of the road edge never sit above any road surface that close to them.
     near = ROAD_HALF + 1.5 * CELL
     for i, js in enumerate(tree.query_ball_point(np.c_[GX.ravel(), GZ.ravel()], near)):
-        if js:
-            r_, c_ = divmod(i, GX.shape[1])
+        r_, c_ = divmod(i, GX.shape[1])
+        if js and not under[r_, c_] and not roof[r_, c_]:
             lv = y[js]
-            lv = lv[lv >= y[idx[r_, c_]] - 1.5]          # only legs at a similar height; a far lower leg is just a valley below
+            lv = lv[lv >= y[idx[r_, c_]] - 6.0]          # only legs within 6 m in height (hairpin legs); a far lower road is just a valley below
             terrain[r_, c_] = min(terrain[r_, c_], lv.min() - 0.25)
 
     # ---- guardrails on the valley side ----
@@ -154,7 +198,7 @@ def main():
                     m[i:j] = val
                 i = j
         return m
-    rail_r, rail_l = rail_mask(10.0), rail_mask(-10.0)
+    rail_r, rail_l = rail_mask(10.0) & ~tun_in, rail_mask(-10.0) & ~tun_in   # no guardrail inside a tunnel
 
     # ---- write ----
     os.makedirs(out_dir, exist_ok=True)
@@ -173,8 +217,16 @@ def main():
         "credits": cfg["credits"],
     }
     course["title"], course["startName"] = cfg["title"], cfg["start_name"]   # the fly-by's title card and HUD
+    runs = np.flatnonzero(np.diff(np.r_[0, deck_in.astype(int), 0]))
+    if len(runs):
+        course["bridges"] = [[round(float(ds[a_]), 1), round(float(ds[b_ - 1]), 1)] for a_, b_ in zip(runs[::2], runs[1::2])]   # deck spans, in s
+    truns = np.flatnonzero(np.diff(np.r_[0, tun_in.astype(int), 0]))
+    if len(truns):
+        course["tunnels"] = [[round(float(ds[a_]), 1), round(float(ds[b_ - 1]), 1)] for a_, b_ in zip(truns[::2], truns[1::2])]   # tunnel spans, in s
     if cfg.get("forest"):
         course["forest"] = cfg["forest"]                  # createWorld's tree settings for this place
+    if cfg.get("sea") is not None:
+        course["sea"] = cfg["sea"]                        # world.js lays a sheet of water at this height
     if cfg.get("ground"):
         course["ground"] = cfg["ground"]                  # buildTerrain's scrub / rock tints
     json.dump(course, open(os.path.join(out_dir, "course.json"), "w"), separators=(",", ":"))
@@ -184,6 +236,10 @@ def main():
     print(f"elevation {y[0]:.0f} m -> {y[int(finish / STEP)]:.0f} m at finish; "
           f"grade max {np.abs(grade).max() * 100:.1f}%, mean {(-grade).mean() * 100:.1f}%")
     print(f"tightest radius {1 / np.abs(curv).max():.1f} m; stretches tighter than 25 m radius: ~{hairpins}")
+    if "tunnels" in course:
+        print(f"tunnels (s, m): {course['tunnels']}")
+    if "bridges" in course:
+        print(f"bridges (s, m): {course['bridges']}")
     print(f"guardrail coverage: left {rail_l.mean() * 100:.0f}%, right {rail_r.mean() * 100:.0f}%")
     print(f"terrain {nx}x{nz} @ {CELL} m = {(nx - 1) * CELL / 1000:.1f} x {(nz - 1) * CELL / 1000:.1f} km, "
           f"{terrain.min():.0f}-{terrain.max():.0f} m, {os.path.getsize(os.path.join(out_dir, 'terrain.bin')) / 1024:.0f} KB")

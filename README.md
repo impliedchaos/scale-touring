@@ -13,6 +13,8 @@ driving itself.
 | Route 33 (Mt. Haruna, Japan) | Gunma Pref. Route 33, summit → Ikaho | (none) |
 | Rio de Janeiro | Estrada da Gávea, through Rocinha | `?site=rio` |
 | Hong Kong | Peak Road → Stubbs Road | `?site=hk` |
+| Big Sur, California | Pacific Coast Highway (CA 1), Rocky Creek → Bixby Creek Bridge → Hurricane Point, 8 km | `?site=bigsur` |
+| Amalfi Coast, Italy | SS 163 (Strada Statale Amalfitana), Positano → Fiordo di Furore, 12 km | `?site=amalfi` |
 
 More are listed in [TODO.md](TODO.md).
 
@@ -53,19 +55,31 @@ header, title, tree and ground settings), `terrain.bin` (height grid), `roads.js
    result is one ordered polyline.
 2. **Terrain.** Get the best DEM you can (the coarser, the blockier; 30 m is too coarse). A fetcher writes
    `assets/<site>/<dem>.npy` + `.json` (grid CRS, corner, spacing, credit): `tools/fetch_rio_dem.py` (ArcGIS identify, 5 m) or
-   `tools/fetch_hk_dem.py` (GeoTIFF tiles, 0.5 m, **resumable**: tiles download to `.part` and are renamed when complete, so a crash costs one tile).
-   Any new fetcher should be resumable the same way. `tools/dem.py` reads them: a new CRS is one `lonlat → (x, y)` function in `dem.CRS`.
+   `tools/fetch_hk_dem.py` (GeoTIFF tiles, 0.5 m, **resumable**: tiles download to `.part` and are renamed when complete, so a crash costs one tile) or
+   `tools/fetch_3dep_dem.py` (USGS 3DEP 1 m LiDAR for the US: reads only the 256 px blocks around the route out of the 70-370 MB tiles by HTTP range requests; resumable; needs `tifffile` and `imagecodecs`, e.g. `pip install --target <dir> imagecodecs` and `PYTHONPATH=<dir>`).
+   `tools/fetch_tinitaly_dem.py` (Italy, 10 m: cuts a window out of a hand-downloaded TINITALY tile; needs `tifffile`).
+   Any new fetcher that downloads should be resumable the same way. `tools/dem.py` reads them: a new CRS is one `lonlat → (x, y)` function in `dem.CRS`.
 3. **Course.** Add the site to `SITES` in `tools/build_site.py`, then `python3 tools/build_site.py <site>`. It samples the DEM along the
    road, smooths it, carves the terrain around it, marks guardrails on the valley side and writes `course.json` + `terrain.bin`.
-   Per-site knobs: `title`, `start_name`, `crest` (start at the road's highest point), `cell`, `dem_smooth` (hides LiDAR terraces),
-   `forest` (tree counts and foliage hue, palms), `ground` (scrub / rock tints), `credits`.
+   Per-site knobs: `title`, `start_name`, `crest` (start at the road's highest point), `crest_extra` (metres of road kept past it), `cell`, `dem_smooth` (hides LiDAR terraces),
+   `forest` (tree counts and foliage hue, palms, `roadsideBroadleaf` = the dense verge trees (default 9000), `wideBias`, `sparse` = `{below, palmRoad}` clears low ground of trees except palms by the road), `sea` (sea level in metres: a water sheet), `ground` (scrub / rock tints), `credits`.
 4. **Roads and buildings.** `python3 tools/build_roads.py --site <site> && python3 tools/build_buildings.py --site <site> [--flat]`.
-   `--flat` gives flat roofs (favelas, Hong Kong towers). Per-site wall and roof colours are in `PALETTES` in `build_buildings.py`.
+   `--flat` gives flat roofs (favelas, Hong Kong towers). `build_roads.py --paths` (with `--fetch` the first time) also draws footpaths, steps, pedestrian streets and cycleways as thin lines (Rio uses it); they don't push buildings aside. Per-site wall and roof colours are in `PALETTES` in `build_buildings.py`.
 5. **Look at it**, then add the data credits to `CREDITS.md` (it is rendered in-game on the credits card).
+
+**Bridges.** The stitcher records OSM `bridge=*` spans in the route (`bridges`). `build_site.py` runs a bridge's deck level between its ends
+(bare-earth LiDAR has the valley floor under it, not the deck), leaves the terrain below it uncarved, and writes the spans to `course.json` (`bridges`, in metres of `s`); `buildBridges` in `track.js` puts a slab, an arch and columns under each span (cast shadows). Tunnels (`tunnels` in the route, OSM `tunnel=*`) are the reverse: the road runs level between the portals under the hill, the terrain above is kept (at least a 6 m roof), there is no guardrail, `buildTunnels` (track.js) adds a dark arch tube and a concrete frame at each end, and the terrain material discards the arch-shaped volume at each portal (`tunnelPortals` / `cutPortals`; the 6 m heightfield can only make a ramp over the road, so the opening is cut in the shader), and `check_terrain.py` skips them (+8 m at each portal). Routes without those fields (Rio, Hong Kong) are unaffected.
+
+Big Sur's route is stored north to south so that the default (uphill) drive heads north with the sea on the left; `stitch_hk_route.py --names "" --label "..."` keeps every way in a CA 1 query.
+
+Amalfi's route is stored west to east (Positano first) so that the default drive heads west with the sea on the left and ends in Positano.
+
+Rio's route is stitched, then extended by `tools/extend_rio_route.py` (an imaginary link from Gávea onto Rua Henrique Midosi, then Av. Mendes de Morais along the beach).
 
 Route 33 (Japan) predates this and uses `build_route.py` → `build_track.py` (GSI tiles) instead of steps 1 to 3.
 
-Checks worth running on a new road: `build_site.py` prints length, grade, tightest radius and any terrain outside the DEM.
+Checks worth running on a new road: `build_site.py` prints length, grade, tightest radius and any terrain outside the DEM, and
+`python3 -I tools/check_terrain.py [site ...]` fails (exit 1) if terrain rises through any road, listing where (rerun it after every `build_site.py`).
 Where hairpin legs run close at different heights, terrain can poke through the lower road; `build_site.py` caps grid
 nodes near the road to prevent it. Check by eye at the tightest bends.
 

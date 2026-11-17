@@ -1,0 +1,16 @@
+{
+ "crs": "EPSG:26910",
+ "x0": 596951.0,
+ "y0": 4030307.0,
+ "step": 2.0,
+ "nx": 1369,
+ "ny": 3937,
+ "rows": "north_to_south",
+ "bbox_lonlat": [
+  -121.91203,
+  36.34729,
+  -121.89574,
+  36.40758
+ ],
+ "source": "U.S. Geological Survey, 3D Elevation Program (3DEP) 1 m DEM, CA_AZ_FEMA_R9_Lidar_2017_D18 (public domain)"
+}

@@ -10,7 +10,8 @@ float32 .npy plus a small JSON sidecar. The output goes in assets/ (an input, no
     python3 tools/fetch_rio_dem.py --bbox W S E N --step 5 --out assets/rio/dem_rocinha
 
 --bbox is lon/lat (WGS84). Grid is in EPSG:31983 (SIRGAS 2000 / UTM 23S), rows run north to south.
-Nodata is NaN. Credit: Instituto Pereira Passos, Prefeitura da Cidade do Rio de Janeiro (CC BY 4.0).
+Resumable: progress is saved to <out>.part.npy / .part.json every 10 requests, so after a crash or Ctrl-C rerunning the
+same command carries on; the parts are deleted once the final files are written. Nodata is NaN. Credit: Instituto Pereira Passos, Prefeitura da Cidade do Rio de Janeiro (CC BY 4.0).
 """
 import argparse, json, math, sys, time, urllib.parse, urllib.request
 import numpy as np
@@ -102,23 +103,45 @@ def main():
     ys = y1 - np.arange(ny) * a.step  # north to south
     dem = np.full((ny, nx), np.nan, np.float32)
     flat = [(i, j) for i in range(ny) for j in range(nx)]
-    for k in range(0, len(flat), BATCH):
+
+    import os
+    part_npy, part_json = a.out + ".part.npy", a.out + ".part.json"
+    ident = {"bbox": list(a.bbox), "step": a.step, "nx": nx, "ny": ny}
+    start = 0
+    if os.path.exists(part_npy) and os.path.exists(part_json):
+        saved = json.load(open(part_json))
+        if saved.get("ident") == ident:
+            dem = np.load(part_npy)
+            start = saved["done"]
+            print(f"resuming at {start}/{len(flat)}", file=sys.stderr)
+        else:
+            print("ignoring a partial download made with different settings", file=sys.stderr)
+
+    def checkpoint(done):
+        os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
+        np.save(part_npy + ".tmp.npy", dem); os.replace(part_npy + ".tmp.npy", part_npy)
+        json.dump({"ident": ident, "done": done}, open(part_json + ".tmp", "w")); os.replace(part_json + ".tmp", part_json)
+
+    for k in range(start, len(flat), BATCH):
         chunk = flat[k:k + BATCH]
         vals = sample([[float(xs[j]), float(ys[i])] for i, j in chunk])
         for (i, j), v in zip(chunk, vals):
             dem[i, j] = v
+        if (k // BATCH) % 10 == 9:
+            checkpoint(min(k + BATCH, len(flat)))
         if (k // BATCH) % 20 == 0:
             print(f"{min(k + BATCH, len(flat))}/{len(flat)}", file=sys.stderr, flush=True)
         time.sleep(a.delay)
     print(file=sys.stderr)
 
-    import os
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
-    np.save(a.out + ".npy", dem)
+    np.save(a.out + ".tmp.npy", dem); os.replace(a.out + ".tmp.npy", a.out + ".npy")
     json.dump({"crs": "EPSG:31983", "x0": float(xs[0]), "y0": float(ys[0]), "step": a.step, "nx": nx, "ny": ny,
                "rows": "north_to_south", "bbox_lonlat": [w, s, e, n],
                "source": "Instituto Pereira Passos, Prefeitura do Rio de Janeiro, MDT LiDAR 2019 (5 m), CC BY 4.0"},
               open(a.out + ".json", "w"), indent=1)
+    for f in (part_npy, part_json):
+        if os.path.exists(f): os.remove(f)
     ok = np.isfinite(dem)
     print(f"wrote {a.out}.npy  valid {ok.mean():.1%}  z {np.nanmin(dem):.1f}..{np.nanmax(dem):.1f} m", file=sys.stderr)
 

@@ -2,7 +2,8 @@
 """Stitch Peak Road + Stubbs Road (Hong Kong) from raw OSM ways into one ordered polyline.
 
 Input : data/raw/hk_route_osm.json   (Overpass `out body geom`: tags, way node ids and geometry)
-Output: data/hk_route.json           (ordered lat/lon points, metres from the start, plus way ids used)
+Output: data/hk_route.json           (ordered lat/lon points, metres from the start, plus way ids used and `bridges`, `tunnels`:
+                                      the lat/lon ends of each OSM bridge on the route, which build_site.py keeps level and uncarved)
 
 The OSM data is a graph, not a line: paired one-way carriageways, service roads, a viaduct. This builds a
 directed graph over OSM node ids, then takes the shortest path from the Peak to the Stubbs Road end.
@@ -31,6 +32,7 @@ def main():
     ap.add_argument("--start", nargs=2, type=float, default=START)
     ap.add_argument("--end", nargs=2, type=float, default=END)
     ap.add_argument("--names", nargs="+", default=list(NAMES), help="road names to keep (substring of the OSM name)")
+    ap.add_argument("--label", help="road name to record in the output instead of --names (for --names \"\", which keeps every way)")
     ap.add_argument("--exclude", nargs="*", default=[], help="drop ways whose name contains any of these")
     ap.add_argument("--raw", default=os.path.join(ROOT, "data", "raw", "hk_route_osm.json"))
     ap.add_argument("--out", default=os.path.join(ROOT, "data", "hk_route.json"))
@@ -83,21 +85,39 @@ def main():
                 heapq.heappush(heap, (d + c, v))
     if e not in prev and s != e:
         sys.exit("no path from start to end; check one-way directions or pick other endpoints")
-    path, used = [e], []
+    path, used, edge_way = [e], [], []
     while path[-1] != s:
         u, wid = prev[path[-1]]
         path.append(u)
+        edge_way.append(wid)
         if not used or used[-1] != wid:
             used.append(wid)
-    path.reverse(); used.reverse()
+    path.reverse(); used.reverse(); edge_way.reverse()    # edge_way[i] is the way from path[i] to path[i + 1]
+
+    def spans(is_span):
+        out, i = [], 0
+        while i < len(edge_way):
+            if edge_way[i] in is_span:
+                j = i
+                while j < len(edge_way) and edge_way[j] == edge_way[i]:
+                    j += 1
+                out.append({"way": edge_way[i], "a": list(pos[path[i]]), "b": list(pos[path[j]])})
+                i = j
+            else:
+                i += 1
+        return out
+    # bridge spans (OSM bridge=*, not "no"): where the road is carried over a gap, the DEM under it is the ground below, not the deck
+    bridges = spans({w["id"] for w in ways if w["tags"].get("bridge") not in (None, "no")})
+    # tunnel spans (OSM tunnel=*, not "no"): the DEM over one is the hill, so build_site.py runs the road level between the portals, under it
+    tunnels = spans({w["id"] for w in ways if w["tags"].get("tunnel") not in (None, "no")})
 
     pts, run = [], 0.0
     for i, n in enumerate(path):
         if i:
             run += dist(pos[path[i - 1]], pos[n])
         pts.append({"lat": pos[n][0], "lon": pos[n][1], "s": round(run, 2)})
-    json.dump({"source": "OpenStreetMap contributors (ODbL)", "roads": a.names, "length_m": round(run, 1),
-               "ways": used, "points": pts}, open(a.out, "w"), indent=1)
+    json.dump({"source": "OpenStreetMap contributors (ODbL)", "roads": [a.label] if a.label else a.names, "length_m": round(run, 1),
+               "ways": used, "bridges": bridges, "tunnels": tunnels, "points": pts}, open(a.out, "w"), indent=1)
     print(f"wrote {a.out}: {len(pts)} points, {run:.0f} m, {len(used)} ways", file=sys.stderr)
 
 

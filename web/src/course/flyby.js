@@ -1,7 +1,7 @@
 // The fly-by (the default page): a drone flies over the course, a car drifts down the road and back up.
 // Esc opens the options menu. Other keys: Space pause · [ ] pace · H hide the text · R restart.  Pad: START menu · A pause · L1/R1 pace · Y text.
 // Options (course/options.js) come from the menu (remembered), and the URL overrides them for tests and screenshots:
-//      ?site=rio|hk another place (tools/build_site.py) · ?day · ?weather=clear|wet|rain|fog|wetfog · ?uphill (start at the bottom)
+//      ?site=rio|hk|bigsur another place (tools/build_site.py) · ?day · ?weather=clear|wet|rain|fog|wetfog · ?uphill (start at the bottom)
 //      ?car=<id>|none the car to chase (default ae86; none = the drone just flies the road) · ?tiltshift=0|1|2 miniature look off · blurred by screen height (estimated) · by scene depth (bare = 2)
 //      ?shadows=0|1|2 off · headlights and the moon's, coarse · plus the moon's sharp near the camera (bare ?shadows = 2)
 //      ?fps frame-rate counter

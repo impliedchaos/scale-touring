@@ -1,0 +1,16 @@
+{
+ "crs": "EPSG:32632",
+ "x0": 962505.0,
+ "y0": 4513335.0,
+ "step": 10.0,
+ "nx": 821,
+ "ny": 408,
+ "rows": "north_to_south",
+ "bbox_lonlat": [
+  14.47555,
+  40.60804,
+  14.55486,
+  40.63421
+ ],
+ "source": "INGV TINITALY/1.1 10 m DEM (Tarquini et al. 2012), CC BY 4.0"
+}

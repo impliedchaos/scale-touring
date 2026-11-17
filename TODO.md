@@ -5,6 +5,8 @@ something to chew on. Each entry notes where the terrain data would come from; t
 Anything coarser than ~5 m looks blocky (30 m global models such as Copernicus GLO-30 are a last resort).
 
 ## Done
+- [x] Amalfi Coast, Italy: SS163 from Positano east to the Fiordo di Furore, 12 km (13.5 km before smoothing). INGV TINITALY 10 m via `fetch_tinitaly_dem.py` (tile w45095; the tile map on the download page runs west to east, and the names don't follow the UTM easting). Notes: the road is the surface SS163 only (no Amalfi town: the route ends at Furore); 6 OSM tunnels are built as hills over a level road (`tunnels` in course.json; `buildTunnels` in track.js adds a dark tube and a concrete frame at each end, and the terrain shader cuts an arch-shaped opening into the hill at each portal), 11 bridges; `y_smooth=50` because 10 m terrain turns hairpins into 30-50% grades (max now 30%); no sun-facing terraces or lemon groves, buildings only from OSM.
+- [x] Big Sur: Pacific Coast Highway (CA 1), 8 km from Rocky Creek over Bixby Creek Bridge to Hurricane Point. USGS 3DEP 1 m LiDAR via `fetch_3dep_dem.py`; bridge decks run level. Notes: the DEM flattens open water to 0.6 / 1.14 m, so `sea` is 1.3 and `forest.sparse` clears trees below 2 m; the datum is ~1-2 m off WGS84; only 47 OSM buildings; bridges are built in `buildBridges` (track.js): slab, arch ribs and columns, which also cast the shadow into the valley.
 - [x] Route 33, Mt. Haruna, Japan (GSI DEM)
 - [x] Rio de Janeiro: Estrada da Gávea through Rocinha (IPP 5 m LiDAR)
 - [x] Hong Kong: Peak Road → Stubbs Road (CEDD 0.5 m LiDAR)
@@ -12,8 +14,6 @@ Anything coarser than ~5 m looks blocky (30 m global models such as Copernicus G
 ## Candidates
 - [ ] **Valparaíso, Chile**: the cerros, steep colourful streets stacked up the hills, switchbacks like Cerro Alegre's.
   DEM: no obvious national LiDAR; check IDE Chile, otherwise a 12.5 m ALOS PALSAR DEM.
-- [ ] **Amalfi Coast, Italy**: SS163 through Positano and Amalfi, villages stacked down the cliff. DEM: Italy's
-  TINITALY 10 m, or regional LiDAR (Campania).
 - [ ] **Kotor serpentine, Montenegro**: 25 hairpins up from Kotor's old town. DEM: probably only 30 m; weakest data of the list.
 - [ ] **Nagasaki, Japan**: Mt. Inasa and the hillside neighbourhoods, dense and steep. DEM: GSI dem5a (already supported by `build_track.py`).
 - [ ] **Onomichi / Kobe Rokko, Japan**: same data source as Route 33, so the cheapest to add.
@@ -28,10 +28,11 @@ Anything coarser than ~5 m looks blocky (30 m global models such as Copernicus G
   the pipeline proven, so only a new stitch and build.
 
 ## Housekeeping
-- [ ] Retrofit checkpointing to `tools/fetch_rio_dem.py` (the HK fetcher resumes; this one restarts from scratch).
-- [ ] Rio: the route stops ~100 m short of São Conrado beach (a gap in the OSM road). Decide whether to bridge it by hand.
+- [x] `tools/fetch_rio_dem.py` now checkpoints (`<out>.part.npy`) and resumes, like the HK fetcher.
+- [x] Rio: the route now carries on past the foot of Gávea (imaginary ~30 m link onto Rua Henrique Midosi) and along Av. Mendes de Morais to the Niemeyer junction (`tools/extend_rio_route.py`).
+- [x] Rio: São Conrado's coastal plain is thinned (`forest.sparse`) and has a sea (`sea`), both per-site settings in `SITES`.
 - [ ] Rio: OSM building coverage is patchy on the far hillside.
-- [ ] Draw footpaths and steps as narrow paths (Rocinha's alleys are missing).
+- [x] Footpaths and steps are drawn as narrow paths in Rio (`build_roads.py --site rio --paths`; 308 of 682 pieces).
 - [ ] Hong Kong: only ~45% of buildings have height tags, the rest are guessed.
 - [ ] Confirm the CSDI portal's terms for the CEDD LiDAR data (the credit follows the DATA.GOV.HK attribution terms).
 - [ ] A way to pick a site from the page, instead of editing the URL.

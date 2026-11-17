@@ -7,6 +7,8 @@
 - Elevation: 出典：国土地理院 (Geospatial Information Authority of Japan), DEM tiles (dem5a / dem10b). https://maps.gsi.go.jp/development/ichiran.html
 - Rio de Janeiro fly-over (Estrada da Gávea, Rocinha): terrain from the Modelo Digital de Terreno LiDAR 2019, Instituto Pereira Passos, Prefeitura da Cidade do Rio de Janeiro, licensed CC BY 4.0. Roads, buildings: © OpenStreetMap contributors, licensed under the ODbL. https://www.openstreetmap.org/copyright
 - Hong Kong fly-over (Peak Road to Stubbs Road): terrain from the LiDAR 2020 Digital Terrain Model, Civil Engineering and Development Department, HKSAR Government, via CSDI / DATA.GOV.HK. Roads, buildings: © OpenStreetMap contributors, licensed under the ODbL. https://www.openstreetmap.org/copyright
+- Big Sur fly-over (Pacific Coast Highway, California State Route 1, around Bixby Creek Bridge): terrain from the U.S. Geological Survey 3D Elevation Program (3DEP) 1 m DEM, project CA_AZ_FEMA_R9_Lidar_2017_D18 (public domain). Roads, buildings: © OpenStreetMap contributors, licensed under the ODbL. https://www.openstreetmap.org/copyright
+- Amalfi Coast fly-over (SS 163, Positano to Furore): terrain from INGV TINITALY/1.1, a 10 m DEM of Italy (Tarquini S., Vinci S., Favalli M., Doumaz F., Fornaciai A., Nannipieri L., 2012, Release of a 10-m-resolution DEM for the Italian territory, Computers & Geosciences 38, 168-170), licensed CC BY 4.0, https://tinitaly.pi.ingv.it/. Roads, buildings: © OpenStreetMap contributors, licensed under the ODbL. https://www.openstreetmap.org/copyright
 
 ## 3D models
 The first six car models are by JiggleSticks (https://sketchfab.com/JiggleSticks), from the

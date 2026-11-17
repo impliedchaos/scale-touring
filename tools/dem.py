@@ -1,12 +1,12 @@
-"""DEM-agnostic elevation lookup by WGS84 lat/lon, for the fly-over sites (Rio, Hong Kong).
+"""DEM-agnostic elevation lookup by WGS84 lat/lon, for the fly-over sites (Rio, Hong Kong, Big Sur).
 
     from dem import load
     d = load("assets/rio/dem_gavea")         # reads <base>.npy + <base>.json
     z = d.elev(lat, lon)                     # scalars or arrays, bilinear, NaN outside / on nodata
 
 The sidecar JSON (written by tools/fetch_*_dem.py) names the grid CRS, the north-west corner (x0, y0),
-the spacing and the source credit. Supported CRS: EPSG:31983 (SIRGAS 2000 / UTM 23S) and EPSG:2326
-(Hong Kong 1980 Grid). Add one by writing a `lonlat -> (x, y)` function and registering it in CRS.
+the spacing and the source credit. Supported CRS: EPSG:31983 (SIRGAS 2000 / UTM 23S), EPSG:2326
+(Hong Kong 1980 Grid) EPSG:26910 (NAD83 / UTM 10N) and EPSG:32632 (WGS 84 / UTM 32N). Add one by writing a `lonlat -> (x, y)` function and registering it in CRS.
 
 The HK1980 datum is ~100 m off WGS84, so it goes through a 7-parameter Helmert shift. Parameters and
 rotation convention were checked against the HK Geodetic Survey's official transform service
@@ -46,6 +46,18 @@ def utm23s(lon, lat):
     return _tm(lon, lat, WGS84, 0.0, -45.0, 0.9996, 500000.0, 10000000.0)
 
 
+def utm10n(lon, lat):
+    """EPSG:26910 (NAD83 / UTM 10N; USGS 3DEP, central California). NAD83 is only ~1-2 m from WGS84 there, so no datum shift
+    (fine for 1 m LiDAR under a road that OSM places to a few metres; not for anything needing sub-metre agreement)."""
+    return _tm(lon, lat, WGS84, 0.0, -123.0, 0.9996, 500000.0, 0.0)
+
+
+def utm32n(lon, lat):
+    """EPSG:32632 (WGS 84 / UTM 32N), which TINITALY uses for the whole of Italy, so the east (Amalfi is at E ~965 km) is far past the
+    zone's own 6 degrees; the series is still good to well under a metre at ~5.5 degrees from the central meridian."""
+    return _tm(lon, lat, WGS84, 0.0, 9.0, 0.9996, 500000.0, 0.0)
+
+
 # HK80 -> WGS84 Helmert (translation m, rotation arc-seconds, scale ppm), Coordinate Frame convention
 _HK_T = np.array([-162.619, -276.959, -161.764])
 _HK_R = np.array([-0.067753, 2.243648, 1.158828]) * ARCSEC
@@ -82,7 +94,7 @@ def hk1980(lon, lat):
     return _tm(lo, la, INTL1924, 22.3121333333, 114.1785555556, 1.0, 836694.05, 819069.80)
 
 
-CRS = {"EPSG:31983": utm23s, "EPSG:2326": hk1980}
+CRS = {"EPSG:31983": utm23s, "EPSG:2326": hk1980, "EPSG:26910": utm10n, "EPSG:32632": utm32n}
 
 
 class Dem:

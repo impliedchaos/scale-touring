@@ -63,12 +63,14 @@ Missing blocks fall back to Japan's look, so adding a field must not change Rout
 along the road to pos / forward / right / curvature. Everything positions itself in `(s, lateral)` road coordinates.
 
 **Terrain data (`tools/dem.py`).** DEM-agnostic loader: `load(base)` reads `<base>.npy` + `.json` (grid CRS, corner, spacing),
-`elev(lat, lon)` is bilinear. Supported CRS: EPSG:31983 (Rio) and EPSG:2326 (Hong Kong, via a 7-parameter Helmert shift validated to 1 mm
+`elev(lat, lon)` is bilinear. Supported CRS: EPSG:31983 (Rio), EPSG:26910 (Big Sur, plain UTM 10N with no datum shift, so ~1-2 m off WGS84) and EPSG:2326 (Hong Kong, via a 7-parameter Helmert shift validated to 1 mm
 against the HK Geodetic Survey's service; don't change the signs without redoing that check). Add one by registering a `lonlat → (x, y)` function in `CRS`.
+
+**`tools/check_terrain.py`.** Run after any `build_site.py`: exits 1 and lists the `s` ranges where terrain pokes through the road (all sites by default). Fix them in `build_site.py`, not by tolerating them.
 
 **`tools/build_site.py`.** Samples DEM heights on the road, smooths them, carves the terrain around the road (flat to `flat_r`, blending to the
 raw ground by `blend_r`), caps grid nodes near the road so hairpin legs at different heights don't poke through the lower one, marks guardrails
-on the valley side. Always fills DEM nodata (sea would otherwise give NaN terrain heights).
+on the valley side. Always fills DEM nodata (sea would otherwise give NaN terrain heights). Bridges (`bridges` in the route JSON) are run level between their ends with the terrain under them left uncarved.
 
 **Buildings (`tools/build_buildings.py`).** OSM footprints nudged off the road; heights from tags or guessed; walls and roofs from
 `PALETTES[site]` (else Japan's), `--flat` for flat roofs. Rendered as one merged mesh with a window texture that lights at night.

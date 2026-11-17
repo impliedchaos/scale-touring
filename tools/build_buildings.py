@@ -39,6 +39,9 @@ PALETTES = {"rio": (
 PALETTES["hk"] = (   # Mid-Levels towers: tiled and painted concrete, pale and weathered
     ["#e6e1d6"] * 3 + ["#d4d0c6"] * 3 + ["#c9ced1"] * 2 + ["#b8c4cc"] * 2 + ["#d9c9a8", "#c7b79a", "#9fb2a6", "#e3d0c0", "#a9a39a", "#8d97a0"],
     ["#8c8c88"] * 3 + ["#6e7378"] * 2 + ["#a7a399", "#5d6670"])
+PALETTES["amalfi"] = (   # Positano and the villages: painted plaster in sun-bleached pinks, ochres and creams, with a few whites and pale blues
+    ["#e8d9bc"] * 3 + ["#e3b98f"] * 3 + ["#d9967a"] * 2 + ["#e9c46a"] * 2 + ["#f0e6d2"] * 3 + ["#d98b8b", "#c97b63", "#a9c4c9", "#efe3b8", "#d6a77a"],
+    ["#b5573c"] * 5 + ["#a34a33"] * 3 + ["#c4694a"] * 2 + ["#8c8c88", "#b4b0a6"])
 if SITE in PALETTES: WALLS, ROOFS = PALETTES[SITE]
 
 course = json.load(open(os.path.join(TRACK, "course.json")))
@@ -134,6 +137,7 @@ def main():
     side = json.load(open(rpath))["roads"] if os.path.exists(rpath) else []
     spts = []
     for r in side:
+        if r.get("k", 0) >= 2: continue  # footpaths and steps don't push buildings aside (Rocinha's alleys run between them)
         q = np.array(r["p"]).reshape(-1, 3)[:, [0, 2]]
         d = np.gradient(q, axis=0) if len(q) > 1 else np.array([[1.0, 0.0]])
         d /= np.linalg.norm(d, axis=1, keepdims=True) + 1e-9
