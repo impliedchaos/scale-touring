@@ -54,6 +54,11 @@
       #menu .rows li .v { color: var(--cyan); text-align: right; letter-spacing: .06em; text-transform: none; font-size: 14px; }
       #menu .rows li .v i { font-style: normal; color: var(--dim); }
       #menu .rows li.sel .v i { color: var(--pink); }
+      #menu .drop { position: fixed; z-index: 40; overflow-y: auto; padding: 4px; box-sizing: border-box; border: 1px solid var(--pink); border-radius: 6px;
+        background: rgba(8, 4, 24, .97); box-shadow: 0 8px 30px rgba(0, 0, 0, .6), 0 0 16px rgba(255, 45, 149, .3); }
+      #menu .drop .opt { padding: 6px 10px; border-radius: 4px; color: var(--text); font-size: 14px; letter-spacing: .06em; text-transform: none; text-align: right; cursor: pointer; }
+      #menu .drop .opt.cur { color: var(--cyan); }
+      #menu .drop .opt.hot, #menu .drop .opt:hover { background: rgba(255, 45, 149, .22); color: #fff; }
       #menu .rows li .v.changed { color: var(--sun); }
       #menu .rows li.kind-credits, #menu .rows li.kind-apply, #menu .rows li.kind-resume { justify-content: center; }
       #menu .rows li.kind-apply { color: var(--sun); }
