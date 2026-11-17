@@ -22,6 +22,11 @@ More are listed in [TODO.md](TODO.md).
 All from `web/`: `npm install`, then `npm run dev` (Vite; `predev` runs `tools/build_music.py`, a no-op while there are no songs) or `npm run build` →
 `web/dist/`, `npm run preview -- --port 4173` to serve the build.
 
+## GitHub Pages
+`.github/workflows/pages.yml` builds `web/` and publishes `web/dist/` to GitHub Pages on every push to `main` (or by hand from the Actions tab).
+One-off setup in the repo: Settings → Pages → Source: *GitHub Actions*. The build uses relative paths, so it works from `https://<user>.github.io/<repo>/`
+and the `?site=` links work as they do locally.
+
 ## The fly-by
 It's the default page. **Esc** (or the ☰ button, or pad START) opens the options menu: place, time of day, weather, car,
 starting direction, tilt-shift, shadows, pace, text overlay, frame rate, and credits. Pace, engine sound, music, text and frame rate apply live; the
