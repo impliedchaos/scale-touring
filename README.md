@@ -42,6 +42,7 @@ The URL overrides the saved options (so test links stay exact). Flags are on whe
 | `tiltshift=0\|1\|2` | miniature look: off / 1 estimated (blur by screen height) / 2 depth map (default): a 30° lens, blur away from the car, which it keeps centred |
 | `uphill=0` | start at the top and descend (default is uphill) |
 | `engine=<0..1>`, `music=<0..1>` | volume (both off by default; a bare `engine` or `music` = full, `0` = off; the menu has a slider for each) |
+| `cycle=0` | auto-cycle is on by default: after a full up-and-down run the next place loads (the menu's list order, wrapping). `cycle=0` stays put; `?s=` links never cycle |
 | `day` | daylight (default is night) |
 | `weather=clear\|wet\|rain\|fog\|wetfog` | weather |
 | `shadows=0\|1\|2` | moon shadows off / low / high (default 2) |
@@ -95,7 +96,7 @@ GLB conventions: metres, Y up, facing -Z, origin on the ground between the axles
 `wheel_FL/FR/RL/RR`, and `popups` on the AE86 and RX-7. `?garage` views every car (**←/→** to switch).
 
 ## Sound
-The soundtrack is "Maximum Overdrive" by Bogart VGM (CC-BY 3.0). Engines and effects are synthesized live in `web/src/audio/`; the fly-by hears the chased car's engine from the drone
+The soundtrack is "Maximum Overdrive" and "Retroracing Nightlife" by Bogart VGM (CC-BY 3.0 and 4.0). Engines and effects are synthesized live in `web/src/audio/`; the fly-by hears the chased car's engine from the drone
 (`course/audio.js`, positional with Doppler) and plays the music. Both are off by default and start on the first click or key
 (browser autoplay rules). `?audiotest` checks the engine voice. When songs come back: originals and `tracks.json` go in `assets/songs/`,
 and `tools/build_music.py` (run before dev/build; a no-op without `tracks.json`) re-encodes them into `web/public/music/`

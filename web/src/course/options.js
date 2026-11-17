@@ -16,14 +16,14 @@ export const PACES = [0.25, 0.5, 1, 2, 4, 8];
 
 export const DEFAULTS = {
   site: 'rio', day: false, weather: 'clear', car: 'rx7', tilt: 2, shadows: 2, uphill: true,  // WORLD
-  pace: 1, text: true, fps: false, engine: 0, music: 0, song: '',  // LIVE (engine, music: volume 0..1, 0 = off; song: a file in music/playlist.json, '' = the playlist's order)
+  pace: 1, text: true, fps: false, engine: 0, music: 0, song: '', cycle: true,  // LIVE (engine, music: volume 0..1, 0 = off; song: a file in music/playlist.json, '' = the playlist's order)
 };
-export const LIVE = ['pace', 'text', 'fps', 'engine', 'music', 'song'];
+export const LIVE = ['pace', 'text', 'fps', 'engine', 'music', 'song', 'cycle'];
 
 const KEY = 'touring-options';
 const OFF = new Set(['0', 'false', 'off', 'no', 'none']);
 // URL parameter behind each option, for stripping them off the address when the menu reloads the page
-export const URL_KEYS = ['site', 'day', 'weather', 'car', 'tiltshift', 'shadows', 'uphill', 'fps', 'engine', 'music', 'song'];
+export const URL_KEYS = ['site', 'day', 'weather', 'car', 'tiltshift', 'shadows', 'uphill', 'fps', 'engine', 'music', 'song', 'cycle'];
 
 const flag = (params, name) => { const v = params.get(name); return v !== null && !OFF.has(v); };
 
@@ -52,6 +52,7 @@ export function loadOptions(params) {
   if (params.has('fps')) o.fps = flag(params, 'fps');
   if (params.has('engine')) o.engine = volume(params, 'engine');
   if (params.has('music')) o.music = volume(params, 'music');
+  if (params.has('cycle')) o.cycle = flag(params, 'cycle');
   if (params.has('song')) o.song = params.get('song') || '';
 
   if (!PLACES.some((p) => p.id === o.site) && !params.has('site')) o.site = '';

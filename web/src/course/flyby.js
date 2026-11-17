@@ -36,6 +36,7 @@ const carFocus = new THREE.Vector3(), carCentre = new THREE.Vector3();
 
 // Everything below `start()` builds is per world, and is thrown away and rebuilt when a WORLD option is applied (`swap`), with no page reload.
 let world, renderer, scene, camera, path, heightAt, day, weather, course, title, from, shadowLevel, uphill, dir, startS, s, carId, car, tilt, drone;
+let legs = 0, lastDir = 1; // auto-cycle: one leg is a pass from one end to the other; two make a full run
 let paused = false, titleT = 0, swapping = false, queued = false, applied = null; // applied: the options the current world was built from
 
 async function start() {
@@ -60,6 +61,7 @@ async function start() {
 
   // the car to chase (the drone follows it instead of flying at `baseSpeed`)
   applied = { ...opt };
+  legs = 0; lastDir = dir;
   carId = cars[opt.car] ? opt.car : null;
   car = null;
   if (carId) {
@@ -127,6 +129,14 @@ function drawText(dt) {
 }
 
 // ---------------------------------------------------------------- input & menu
+/** Auto-cycle: on to the next place in the menu's list (wrapping), as if it had been picked there. */
+function cycleNext() {
+  const i = PLACES.findIndex((p) => p.id === opt.site);
+  opt.site = PLACES[(i + 1) % PLACES.length].id;
+  menu.staged.site = opt.site; menu.render();
+  legs = 0;
+  swap();
+}
 const restart = () => {
   s = startS; titleT = 0;
   drone.reset();
@@ -155,6 +165,7 @@ const menu = new Menu({
     { key: 'engine', label: 'Engine volume', slider: true },
     { key: 'music', label: 'Music volume', slider: true },
     ...(playlist.length ? [{ key: 'song', label: 'Song', values: [['', 'Playlist order'], ...playlist.map((t) => [t.file, t.title])] }] : []),
+    { key: 'cycle', label: 'Auto-cycle places', values: onOff },
     { key: 'text', label: 'Text overlay', values: onOff },
     { key: 'fps', label: 'Frame rate', values: onOff },
   ],
@@ -191,9 +202,15 @@ function frame() {
   if (car) {
     car.update(run ? dt * pace : 0, camera, renderer, scene.fog);
     s = car.s;
+    if (car.dir !== lastDir) { // it has turned round at an end
+      lastDir = car.dir;
+      if (++legs >= 2 && opt.cycle && !swapping && !params.has('s')) cycleNext(); // up and down (or down and up) done
+    }
   } else if (run) {
     s += dir * baseSpeed * pace * dt;
-    if (uphill ? s < 0 : s > path.finish + 150) restart(); // past the end: back to the start
+    if (uphill ? s < 0 : s > path.finish + 150) { // past the end: back to the start (or on, if cycling: the drone makes one pass)
+      if (opt.cycle && !swapping && !params.has('s')) cycleNext(); else restart();
+    }
   }
   drone.aim(s, car ? car.camDir() : dir, still ? 0 : car ? dt * pace : dt, still, tilt && car ? carCentre.copy(car.rig.pos).setY(car.rig.pos.y + 0.7) : null);
   audio.update(run && car ? dt * pace : 0, camera, paused || still);

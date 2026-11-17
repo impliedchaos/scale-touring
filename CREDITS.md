@@ -39,6 +39,9 @@ so they're fitted with the Supra's brake calipers and discs.
   Web Audio API. No samples.
 - "Maximum Overdrive" by Bogart VGM, CC-BY 3.0 (https://creativecommons.org/licenses/by/3.0/).
   https://opengameart.org/content/maximum-overdrive
+- "Retroracing Nightlife" by Bogart VGM, CC-BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+  https://opengameart.org/content/retroracing-nightlife
+- Bogart VGM asks that his music's credit link to his Facebook page: https://www.facebook.com/BogartVGM/
 
 ## Software
 - three.js by Ricardo Cabello (mrdoob) and contributors, MIT License. https://threejs.org
