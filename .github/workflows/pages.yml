@@ -32,9 +32,10 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - uses: actions/setup-python@v5   # `prebuild` runs tools/build_music.py (a no-op while there are no songs)
+      - uses: actions/setup-python@v5   # `prebuild` runs tools/build_music.py, which re-encodes assets/songs/ with ffmpeg
         with:
           python-version: '3.12'
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - run: npm ci
         working-directory: web
       - run: npm run build
