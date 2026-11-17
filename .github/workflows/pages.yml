@@ -24,6 +24,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # .glb, .bin and .npy are in Git LFS. The site only needs web/public (~27 MB); skipping assets/ and data/ keeps
+      # each run well inside the free LFS bandwidth quota (1 GB a month).
+      - run: git lfs pull --include="web/public/**"
       - uses: actions/setup-node@v4
         with:
           node-version: 22
