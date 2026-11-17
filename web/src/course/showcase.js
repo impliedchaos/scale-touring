@@ -1,4 +1,4 @@
-// The drone and its car: an 86 flat out down the mountain with a bootlegger reverse at each end, and a drone flying
+// The drone and its car: an 86 flat out down the mountain with a spin turn at each end, and a drone flying
 // long, slow shots of the course at the car's pace. Used by the fly-by.
 import * as THREE from 'three';
 import { CarRig } from '../game/car.js';
@@ -32,10 +32,12 @@ export function droneLook(scene, camera, { day, weather }) {
 
 // ---------------------------------------------------------------- the car
 const STOP_TOP = 150;              // the uphill run stops this far below the start line
-const ACCEL = 8, REV_ACCEL = 7, REV_TOP = 15, WHIP_T = 0.95;
+const ACCEL = 8;
+const SPIN_V = 26, SPIN_T = 0.8, SLIDE_A = 10;   // spin turn: starts at this speed (m/s), the tail comes round in this long (s), then it scrubs speed at this rate (m/s²)
 
-/** run (nose along `dir`: +1 downhill, -1 uphill) → stop → back up the way it came → whip 180° (bootlegger reverse)
- *  → run the other way, forever. `s` is where it is on the course. */
+/** run (nose along `dir`: +1 downhill, -1 uphill) → at the end of the road, whip the tail round and slide on backwards (a spin turn:
+ *  the car is still travelling the old way with its nose the other) until the tyres bite and it drives off the way it came, forever.
+ *  `s` is where it is on the course. */
 export class BootlegCar {
   /** `tuning`, `lane`: a car's driving (DRIVERS in drivers.js); defaults are the 86's. */
   constructor({ path, scene, weather, day, gltf, spec, shadow = false, s = 0, dir = 1, tuning = undefined, lane = 0 }) {
@@ -46,7 +48,7 @@ export class BootlegCar {
     weather.addBeams(this.rig.beams);
     // The drift choreography both ways: downhill on the course, uphill on a mirror of it (arc length from
     // the bottom, curvature negated: a right-hander going down is a left-hander coming up). Each speed plan ends in a
-    // stop: past the finish going down, a little below the summit going up.
+    // stop: past the finish going down, a little below the summit going up. The spin turn starts as the plan falls to SPIN_V.
     this.L = (path.n - 1) * path.step;
     const mirror = { step: path.step, half: path.half, n: path.n, K: Float32Array.from(path.K).reverse().map((k) => -k), finish: this.L - STOP_TOP - 80 };
     this.down = new DriftLine(path, tuning, { flyingStart: true });
@@ -60,7 +62,7 @@ export class BootlegCar {
   /** Back to `s`, flat out (a flying start) downhill, or uphill with `dir` -1. */
   restart(s = 0, dir = 1) {
     const line = dir > 0 ? this.down : this.up;
-    Object.assign(this, { s, dir, phase: 'run', v: line.speedAt(dir > 0 ? s : this.L - s), t: 0, lat: 0, whipSide: 1, speed: 0 });
+    Object.assign(this, { s, dir, phase: 'run', v: line.speedAt(dir > 0 ? s : this.L - s), t: 0, lat: 0, whipSide: 1, speed: 0, w: 0 });
     line.angle = line.angleVel = 0;
     this._step(0);
     this.rig.resetVelocity(this.skids);
@@ -73,13 +75,13 @@ export class BootlegCar {
     this.smoke.update(dt, camera, renderer, fog);
   }
 
-  /** Which way a camera following it should look down the road: the way the nose points (swaps halfway round a whip). */
-  camDir() { return this.phase === 'whip' && this.t > WHIP_T / 2 ? -this.dir : this.dir; }
+  /** Which way a camera following it should look down the road: the way the nose points (swaps halfway round the spin). */
+  camDir() { return this.phase === 'spin' && this.t > SPIN_T / 2 ? -this.dir : this.dir; }
 
   _step(dt) {
     const r = this.rig, path = this.path;
     const base = this.dir > 0 ? 0 : Math.PI;        // nose downhill / uphill, as a yaw from the road's forward
-    let angle = base, slip = 0, speed = this.v, lat = this.lat, demand = 0;
+    let angle = base, slip = 0, speed = this.v, lat = this.lat, demand = 0, fxSpeed = null;
     this.t += dt;
     if (this.phase === 'run') {
       const line = this.dir > 0 ? this.down : this.up, sl = this.dir > 0 ? this.s : this.L - this.s;
@@ -92,30 +94,26 @@ export class BootlegCar {
       lat = this.lat = this.dir * (this.lane ? THREE.MathUtils.clamp(line.lateralAt(sl) * 0.4 + this.lane, -2.4, 2.4) : line.lateralAt(sl));
       demand = line.lateralDemand(sl, this.v);
       speed = this.v;
-      if (this.v < 0.3 && plan < 0.5 && dt > 0) { this.phase = 'stop'; this.t = 0; this.v = 0; }
-    } else if (this.phase === 'stop') {             // a beat, then into reverse
-      speed = 0;
-      if (this.t > 0.7) { this.phase = 'reverse'; this.t = 0; }
-    } else if (this.phase === 'reverse') {          // backing up the way it came, building speed
-      this.v = Math.min(this.v + REV_ACCEL * dt, REV_TOP);
-      this.s = THREE.MathUtils.clamp(this.s - this.dir * this.v * dt, 0, this.L);
-      this.lat += (0 - this.lat) * Math.min(1, dt * 0.8); // drift to the middle of the road
-      lat = this.lat;
-      speed = -this.v;                              // wheels turn backwards
-      if (this.v >= REV_TOP) {
-        this.phase = 'whip'; this.t = 0;
-        this.whipSide = Math.sign(this.lat) || 1;   // swing the nose out towards the side it's on: room to turn
+      if (sl > line.path.finish && plan < SPIN_V && dt > 0) {   // out of road: whip it round
+        this.phase = 'spin'; this.t = 0; this.w = this.v;
+        this.whipSide = (Math.sign(this.lat) || 1) * this.dir;    // nose swings to the side it's on, so the tail comes round over the road's middle
       }
-    } else {                                        // whip: yank it round, still sliding the same way
-      const u = Math.min(this.t / WHIP_T, 1), e = u * u * (3 - 2 * u);
-      slip = -this.whipSide * Math.PI * (1 - e);    // how far the nose is from the way it's travelling...
-      angle = base + this.whipSide * Math.PI * e;   // ...as it comes round
-      const v = REV_TOP * (1 - 0.4 * u);
-      this.s = THREE.MathUtils.clamp(this.s - this.dir * v * dt, 0, this.L);
+    } else {                                        // spin: still travelling the old way (w m/s) while the nose comes round and the car slides on backwards
+      const u = Math.min(this.t / SPIN_T, 1), e = u * u * (3 - 2 * u);
+      // a small flick the wrong way to throw the tail out, then the nose swings through 180° and overshoots a touch before it settles
+      const yaw = this.whipSide * Math.PI * (e + 0.06 * Math.sin(Math.PI * Math.min(Math.max((u - 0.7) / 0.3, 0), 1)))
+        - this.whipSide * 0.35 * Math.sin(Math.PI * Math.min(u / 0.3, 1)) * (1 - u);
+      angle = base + yaw;
+      this.w = Math.max(this.w - SLIDE_A * dt, 0);
+      this.s = THREE.MathUtils.clamp(this.s + this.dir * this.w * dt, 0, this.L);
+      this.lat += (0 - this.lat) * Math.min(1, dt * 1.5);
       lat = this.lat;
-      speed = v;
-      if (u >= 1) {                                 // facing the way it's going: drive off
-        this.dir = -this.dir; this.phase = 'run'; this.v = v; this.t = 0;
+      // nose against travel: 0 → 180° with the yaw, then the slide's slip fades as the tyres take hold and it slows to nothing
+      slip = yaw * (u < 1 ? 1 : THREE.MathUtils.clamp(this.w / 6, 0, 1));
+      speed = -this.w;                              // wheels turn backwards while it slides backwards
+      fxSpeed = Math.max(this.w, 9);                // tyre smoke all the way through
+      if (this.t > SPIN_T && this.w <= 0) {         // stopped, and the nose points the way it came: drive off
+        this.dir = -this.dir; this.phase = 'run'; this.v = 0; this.t = 0;
         const line = this.dir > 0 ? this.down : this.up;
         line.angle = line.angleVel = 0;
       }
@@ -123,10 +121,10 @@ export class BootlegCar {
     r.poseOnRoad(path, this.s, lat, angle, demand);
     r.animate(dt, speed, slip, r.o.curvature * this.dir);
     r.trackVelocity(dt);
-    if (dt > 0) { r.tireFx(dt, Math.abs(speed), slip, this.smoke, this.skids); this.weather.spray(r, Math.abs(speed), dt); }
+    if (dt > 0) { r.tireFx(dt, fxSpeed ?? Math.abs(speed), slip, this.smoke, this.skids); this.weather.spray(r, Math.abs(speed), dt); }
     this.speed = Math.abs(speed);
     // what its engine would be doing, for the sound (course/audio.js): signed road speed, drift 0..1, whether it's on the gas
-    this.drive = { v: speed, slip: Math.min(1, Math.abs(slip) / 0.9), throttle: this.phase === 'run' ? 1 : this.phase === 'stop' ? 0 : 0.6 };
+    this.drive = { v: speed, slip: Math.min(1, Math.abs(slip) / 0.9), throttle: this.phase === 'run' ? 1 : 0.6 };
   }
 }
 
