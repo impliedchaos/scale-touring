@@ -309,7 +309,9 @@ export function buildGuardrails(path, course) {
     for (let k = j.i - r; k <= j.i + r; k++) open[j.side].add(k);
   }
   for (const [rails, side] of [[course.rail_left, -1], [course.rail_right, 1]]) {
-    const flags = Array.from(rails, (f, k) => (open[side].has(k) ? '0' : f));
+    // also drop the rail on the inside of a bend tighter than the offset allows (the offset line folds back into the road)
+    const tight = (k) => { for (let m = Math.max(0, k - 2); m <= Math.min(path.n - 1, k + 2); m++) if (side * path.K[m] * off > 0.7) return true; return false; };
+    const flags = Array.from(rails, (f, k) => (open[side].has(k) || tight(k) ? '0' : f));
     let i = 0;
     while (i < path.n) {
       if (flags[i] !== '1') { i++; continue; }

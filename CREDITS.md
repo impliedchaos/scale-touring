@@ -41,6 +41,8 @@ so they're fitted with the Supra's brake calipers and discs.
   https://opengameart.org/content/maximum-overdrive
 - "Retroracing Nightlife" by Bogart VGM, CC-BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
   https://opengameart.org/content/retroracing-nightlife
+- "A Distant Sunrise" by Bogart VGM, CC-BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+  https://opengameart.org/content/a-distant-sunrise
 - Bogart VGM asks that his music's credit link to his Facebook page: https://www.facebook.com/BogartVGM/
 
 ## Software

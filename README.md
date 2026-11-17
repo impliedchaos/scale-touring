@@ -15,6 +15,7 @@ driving itself.
 | Hong Kong | Peak Road → Stubbs Road | `?site=hk` |
 | Big Sur, California | Pacific Coast Highway (CA 1), Rocky Creek → Bixby Creek Bridge → Hurricane Point, 8 km | `?site=bigsur` |
 | Amalfi Coast, Italy | SS 163 (Strada Statale Amalfitana), Positano → Fiordo di Furore, 12 km | `?site=amalfi` |
+| Nagasaki, Japan | Mt. Inasa summit road down to the harbour, 4 km (GSI 5 m DEM) | `?site=nagasaki` |
 
 More are listed in [TODO.md](TODO.md).
 
@@ -96,7 +97,7 @@ GLB conventions: metres, Y up, facing -Z, origin on the ground between the axles
 `wheel_FL/FR/RL/RR`, and `popups` on the AE86 and RX-7. `?garage` views every car (**←/→** to switch).
 
 ## Sound
-The soundtrack is "Maximum Overdrive" and "Retroracing Nightlife" by Bogart VGM (CC-BY 3.0 and 4.0). Engines and effects are synthesized live in `web/src/audio/`; the fly-by hears the chased car's engine from the drone
+The soundtrack is "Maximum Overdrive", "Retroracing Nightlife" and "A Distant Sunrise" by Bogart VGM (CC-BY 3.0 and 4.0). Engines and effects are synthesized live in `web/src/audio/`; the fly-by hears the chased car's engine from the drone
 (`course/audio.js`, positional with Doppler) and plays the music. Both are off by default and start on the first click or key
 (browser autoplay rules). `?audiotest` checks the engine voice. When songs come back: originals and `tracks.json` go in `assets/songs/`,
 and `tools/build_music.py` (run before dev/build; a no-op without `tracks.json`) re-encodes them into `web/public/music/`

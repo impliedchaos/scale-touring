@@ -7,10 +7,10 @@
  "ny": 768,
  "rows": "north_to_south",
  "bbox_lonlat": [
-  129.85266,
+  129.84729,
   32.7486,
   129.86401,
-  32.75531
+  32.76083
  ],
  "source": "\u56fd\u571f\u5730\u7406\u9662 (GSI Japan) DEM5A airborne LiDAR, 5 m"
 }

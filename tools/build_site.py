@@ -57,6 +57,11 @@ SITES = {
                    ground=dict(green="#586a3a", scrub="#76733f", rock="#a39884", rockFlat=0.75, sand="#d8c8a0", sandBelow=2.0),
                    credits=["Terrain: INGV TINITALY/1.1 10 m DEM (Tarquini et al., 2012), CC BY 4.0",
                             "Road: © OpenStreetMap contributors (ODbL)"]),
+    "nagasaki": dict(title=["INASAYAMA", "MT. INASA ROADS · NAGASAKI · JAPAN"], start_name="the summit", route="data/nagasaki_route.json",
+                     dem="assets/nagasaki/dem_inasa", crest=False,   # stored summit to harbour: the default (uphill) drive climbs to the summit
+                     cell=6.0, margin=500.0, dem_smooth=1.0, flat_r=8.0, blend_r=28.0, y_smooth=15.0,
+                     credits=["Terrain: 出典：国土地理院 (GSI Japan) DEM5A airborne LiDAR, 5 m",
+                              "Road: © OpenStreetMap contributors (ODbL)"]),
 }
 
 STEP = 2.0                     # output centreline spacing (m)
