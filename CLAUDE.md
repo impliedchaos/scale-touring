@@ -8,6 +8,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 look. A drone flies over, a car drifts down the road. **Not a joke or a game**: a sincere, pretty toy.
 It was forked from `../ghost-of-mount-akina/` (a comedic touge game, which keeps its own repo, itch.io page and
 Android app). Fixes to shared code (`world.js`, `track.js`, `flyby.js`, audio, car rig) may be worth porting between the two by hand.
+The game's `course/track.js` is one file; here it is split into `track.js` (loading, `TrackPath`), `road.js` (road, side roads,
+guardrails, gutters), `terrain.js`, `vegetation.js`, `buildings.js` and `structures.js` (bridges, tunnels), with the functions
+unchanged, so a fix ported either way goes to whichever file holds that function.
 README.md has the user-facing docs and the per-site pipeline; TODO.md has the list of places to add.
 
 ## Rules that aren't visible in the code

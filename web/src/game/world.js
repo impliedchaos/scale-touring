@@ -1,7 +1,12 @@
 // Renderer, scene, lighting and the mountain. Shared by the fly-by (and anything else that needs the course).
 import * as THREE from 'three';
 import { applyWeather } from './weather.js';
-import { loadCourse, TrackPath, makeHeightAt, buildRoad, buildGuardrails, gutterFlags, buildGutters, buildTerrain, buildForest, buildUndergrowth, buildBuildings, buildBridges, buildTunnels, tunnelPortals } from '../course/track.js';
+import { loadCourse, TrackPath, makeHeightAt } from '../course/track.js';
+import { buildRoad, buildGuardrails, gutterFlags, buildGutters } from '../course/road.js';
+import { buildTerrain } from '../course/terrain.js';
+import { buildForest, buildUndergrowth } from '../course/vegetation.js';
+import { buildBuildings } from '../course/buildings.js';
+import { buildBridges, buildTunnels, tunnelPortals } from '../course/structures.js';
 
 // `shadows`: get the scene ready for headlight shadows (see castShadows below). Free until a car's shadow spot is
 // switched on (CarRig setShadow): three.js only draws shadow maps for lights that cast them.
