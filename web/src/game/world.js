@@ -37,9 +37,9 @@ export async function createWorld({ site = null, day = false, weather = 'clear',
   const course = await loadCourse(`track/${site || 'harasu'}/`); // no site = Mt. Haruna (Route 33)
   const path = new TrackPath(course);
   const heightAt = makeHeightAt(course);
-  const road = buildRoad(path, { centre: course.centre });
+  const road = buildRoad(path, { centre: course.centre, heightAt, bridges: course.bridges });
   const gutters = gutterFlags(path, course, heightAt);
-  scene.add(buildTerrain(course, tunnelPortals(path, course)), road, buildBridges(path, course, heightAt), buildTunnels(path, course), buildGuardrails(path, course), buildGutters(path, gutters),
+  scene.add(buildTerrain(course, tunnelPortals(path, course)), road, buildBridges(path, course, heightAt), buildTunnels(path, course), buildGuardrails(path, course, heightAt), buildGutters(path, gutters),
   buildForest(path, heightAt, { ...forest, ...course.forest, buildings: course.buildings, snow: course.ground?.snow }), buildBuildings(course.buildings, { day: day }));
   if (course.sea != null) { // sea level (course.json `sea`, metres): a flat translucent sheet over the whole terrain; the DEM's bay lies below it
     const { nx, nz, x0, z0, cell } = course.terrain;

@@ -40,7 +40,7 @@ function roadTexture(markings = true, centre = 'yellow') {
   return tex;
 }
 
-export function buildRoad(path, { centre = 'yellow' } = {}) {
+export function buildRoad(path, { centre = 'yellow', heightAt, bridges } = {}) {
   const half = path.half, TILE = 14;
   // the course plus its scenery extensions either end (path.ext), as one strip
   const pts = [...[...path.ext.start].reverse(), ...path.P.map((p, i) => ({ p, r: path.R[i] })), ...path.ext.end];
@@ -62,7 +62,7 @@ export function buildRoad(path, { centre = 'yellow' } = {}) {
   geo.computeVertexNormals();
   const road = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: roadTexture(true, centre), roughness: 0.9 }));
   road.name = 'road';
-  road.add(buildRoadBody(pts, half));
+  road.add(buildRoadBody(pts, half, s0, path.step, heightAt, bridgeTest({ bridges })));
 
   // start and finish lines
   const lines = new THREE.Group();
@@ -84,19 +84,37 @@ export function buildRoad(path, { centre = 'yellow' } = {}) {
   return road;
 }
 
-/** Under the surface: a slab ROAD_BODY.thick thick (the road is the top face) whose lower part also juts `flange` out each side, so the
- *  cross-section is an upside-down T. It closes the gap wherever the ground falls away from the road, and the guardrail posts stand on it. */
-export const ROAD_BODY = { thick: 0.5, flangeTop: 0.3, flange: 0.85 };   // flangeTop: just under the terrain's carved level (0.25 under the road) and the gutter floor (0.2), so they don't z-fight; flange: reaches under the rail posts
+/** Under the surface: a slab (the road is its top face) whose lower part also juts `flange` out each side, giving the cross-section
+ *  an upside-down T. The flange follows the ground: its top sits `sink` below the terrain beside the road, so it is buried wherever
+ *  the ground is near the road, while the slab's wall fills the gap down to it where the ground falls away (at most `maxDrop`
+ *  down). On a bridge (the slab under it is its own) it stays at the fixed depth `bridgeDrop`. The guardrail posts run down to it. */
+export const ROAD_BODY = { flange: 0.85, flangeThick: 0.25, sink: 0.3, maxDrop: 2, bridgeDrop: 0.3 };
 
-function buildRoadBody(pts, half) {
-  const { thick, flangeTop, flange } = ROAD_BODY, w = half + flange;
-  // cross-section (right of the centre line, up from the surface), left top edge round to the right top edge
-  const prof = [[-half, 0], [-half, -flangeTop], [-w, -flangeTop], [-w, -thick], [w, -thick], [w, -flangeTop], [half, -flangeTop], [half, 0]];
+/** How far below the road surface the flange top is at (x, z): see ROAD_BODY. */
+export function flangeDrop(heightAt, x, z, roadY, onBridge) {
+  if (onBridge) return ROAD_BODY.bridgeDrop;
+  return THREE.MathUtils.clamp(roadY - heightAt(x, z) + ROAD_BODY.sink, ROAD_BODY.bridgeDrop, ROAD_BODY.maxDrop);
+}
+
+/** `s => bool`: is road position `s` on a bridge deck (course.bridges, padded a little)? */
+export function bridgeTest(course, pad = 3) {
+  const spans = course.bridges || [];
+  return (s) => spans.some(([a, b]) => s >= a - pad && s <= b + pad);
+}
+
+function buildRoadBody(pts, half, s0, step, heightAt, isBridge) {
+  const { flange, flangeThick } = ROAD_BODY, w = half + flange, mid = half + flange / 2;
   const pos = [], idx = [], n = pts.length;
-  for (let m = 0; m < prof.length - 1; m++) {
+  const drops = pts.map(({ p, r }, i) => {                                  // flange top depth, left and right
+    const bridge = isBridge(s0 + i * step);
+    return [-1, 1].map((side) => flangeDrop(heightAt, p.x + r.x * side * mid, p.z + r.z * side * mid, p.y, bridge));
+  });
+  for (let m = 0; m < 7; m++) {
     const base = pos.length / 3;
     for (let i = 0; i < n; i++) {
-      const { p, r } = pts[i];
+      const { p, r } = pts[i], [dl, dr] = drops[i];
+      // cross-section (right of the centre line, up from the surface), left top edge round to the right top edge
+      const prof = [[-half, 0], [-half, -dl], [-w, -dl], [-w, -dl - flangeThick], [w, -dr - flangeThick], [w, -dr], [half, -dr], [half, 0]];
       for (const [u, v] of [prof[m], prof[m + 1]]) pos.push(p.x + r.x * u, p.y + v, p.z + r.z * u);
       if (i < n - 1) { const q = base + 2 * i; idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3); }
     }
@@ -148,11 +166,12 @@ function buildSideRoads(roads, TILE = 14) {
 
 // ---------------------------------------------------------------- guardrails
 
-export function buildGuardrails(path, course) {
+export function buildGuardrails(path, course, heightAt) {
   const group = new THREE.Group();
   group.name = 'guardrails';
   const railMat = new THREE.MeshStandardMaterial({ color: 0xdedcd4, roughness: 0.5, metalness: 0.3, side: THREE.DoubleSide });
-  const postGeo = new THREE.BoxGeometry(0.12, 0.8 + ROAD_BODY.thick, 0.12);   // from the bottom of the road slab (it stands on the flange) up to the top of the rail
+  const postGeo = new THREE.BoxGeometry(0.12, 1, 0.12);   // scaled per post: from the top of the rail (0.8) down into the ground, to the road flange
+  const isBridge = bridgeTest(course);
   const reflGeo = new THREE.BoxGeometry(0.16, 0.12, 0.04);
   const postMat = new THREE.MeshStandardMaterial({ color: 0xb8b6ae, roughness: 0.6 });
   const reflMat = new THREE.MeshBasicMaterial({ color: 0xff9a1f });
@@ -182,7 +201,7 @@ export function buildGuardrails(path, course) {
         tmp.copy(p).addScaledVector(r, side * off);
         pos.set([tmp.x, tmp.y + 0.45, tmp.z, tmp.x, tmp.y + 0.8, tmp.z], k * 6);
         if (k < cnt - 1) { const a = 2 * k; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
-        if ((i + k) % 2 === 0) posts.push(tmp.clone());
+        if ((i + k) % 2 === 0) posts.push([tmp.clone(), 0.8 + flangeDrop(heightAt, tmp.x, tmp.z, p.y, isBridge((i + k) * path.step)) + ROAD_BODY.flangeThick]);
         if ((i + k) % 10 === 0) refls.push([tmp.clone(), r.clone().multiplyScalar(-side)]);
       }
       const geo = new THREE.BufferGeometry();
@@ -193,9 +212,10 @@ export function buildGuardrails(path, course) {
       i = j;
     }
   }
-  const m4 = new THREE.Matrix4();
+  const m4 = new THREE.Matrix4(), tmpScale = new THREE.Vector3();
   const postMesh = new THREE.InstancedMesh(postGeo, postMat, posts.length);
-  posts.forEach((p, k) => postMesh.setMatrixAt(k, m4.makeTranslation(p.x, p.y + 0.4 - ROAD_BODY.thick / 2, p.z)));
+  const one0 = new THREE.Vector3(), id = new THREE.Quaternion();
+  posts.forEach(([p, h], k) => postMesh.setMatrixAt(k, m4.compose(one0.set(p.x, p.y + 0.8 - h / 2, p.z), id, tmpScale.set(1, h, 1))));
   const reflMesh = new THREE.InstancedMesh(reflGeo, reflMat, refls.length);
   const q = new THREE.Quaternion(), one = new THREE.Vector3(1, 1, 1);
   refls.forEach(([p, inward], k) => {
