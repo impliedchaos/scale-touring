@@ -73,6 +73,7 @@ async function start() {
     car.rig.setShadow(shadowLevel >= 1);
   }
   cameras = new CameraRig({ camera, path, heightAt, car });
+  scene.userData.focus = cameras.focus;  // what the ground cover stays grown around
   applyView();
   applyTilt();
   audio.rebind({ car, carId, spec: cars[carId], weather });

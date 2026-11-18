@@ -293,8 +293,8 @@ export function buildUndergrowth(path, heightAt, { buildings = null, snow = null
   const bushHex = colors?.bush || 0x2a4a26, tuftHex = colors?.tuft || 0x3e5a24;     // `ground.bush` / `ground.tuft` in course.json: tumbleweeds in the desert
   const thin = colors?.brush ?? 1;                                                       // `ground.brush` in course.json: 0..1, sparser in the desert
   const BOOST = 3, DENSITY = { bush: 0.06, tuft: 0.15 };   // per m² away from the road; BOOST× within 20 m of it
-  const fade = { value: new THREE.Vector2(100, reach) };
-  const mat = fadeWithDistance(snowy(mottled({ vertexColors: false }), snow, false), fade); // same dappling as the broadleaf crowns
+  const fade = { value: new THREE.Vector2(100, reach) }, focus = { value: new THREE.Vector2() }; // focus: the ground under the subject, which a long-lens drone sits far from
+  const mat = fadeWithDistance(snowy(mottled({ vertexColors: false }), snow, false), fade, focus); // same dappling as the broadleaf crowns
   const bushGeo = new THREE.IcosahedronGeometry(0.6, 0).translate(0, 0.45, 0);              // 20 tris
   const tuftGeo = new THREE.ConeGeometry(0.3, 0.8, 5, 1, true).translate(0, 0.4, 0);        // 5 tris
   const group = new THREE.Group();
@@ -338,19 +338,24 @@ export function buildUndergrowth(path, heightAt, { buildings = null, snow = null
   };
 
   let first = true;
-  const update = (camera, fogCut) => {
-    const end = THREE.MathUtils.clamp(fogCut, 50, reach), cx = camera.position.x, cz = camera.position.z;
+  const update = (camera, fogCut, subject) => {
+    const end = THREE.MathUtils.clamp(fogCut, 50, reach);
     fade.value.set(end * 0.6, end);
+    focus.value.set(subject ? subject.x : camera.position.x, subject ? subject.z : camera.position.z);
+    const centres = [[camera.position.x, camera.position.z]];
+    if (subject) centres.push([subject.x, subject.z]);
     const range = end + cell * 0.7;                                                         // squares from here on are already fully shrunk
-    const want = [];
-    for (let i = Math.floor((cx - range) / cell); i <= Math.floor((cx + range) / cell); i++) {
-      for (let j = Math.floor((cz - range) / cell); j <= Math.floor((cz + range) / cell); j++) {
-        const d = Math.hypot((i + 0.5) * cell - cx, (j + 0.5) * cell - cz);
-        if (d < range && !cells.has(`${i},${j}`)) want.push({ i, j, d });
+    const want = [], seen = new Set();
+    for (const [cx, cz] of centres) {
+      for (let i = Math.floor((cx - range) / cell); i <= Math.floor((cx + range) / cell); i++) {
+        for (let j = Math.floor((cz - range) / cell); j <= Math.floor((cz + range) / cell); j++) {
+          const d = Math.hypot((i + 0.5) * cell - cx, (j + 0.5) * cell - cz), k = `${i},${j}`;
+          if (d < range && !cells.has(k) && !seen.has(k)) { seen.add(k); want.push({ i, j, d }); }
+        }
       }
     }
     want.sort((a, b) => a.d - b.d);
-    const budget = first ? Infinity : want.length > 12 ? 8 : 3;                             // all at once the first time, then a few a frame
+    const budget = first ? Infinity : want.length > 12 ? 12 : 4;                             // all at once the first time, then a few a frame
     for (const { i, j } of want.slice(0, budget)) {
       const g = build(i, j);
       cells.set(`${i},${j}`, g);
@@ -359,7 +364,7 @@ export function buildUndergrowth(path, heightAt, { buildings = null, snow = null
     first = false;
     for (const [k, g] of cells) {                                                           // let go of squares well behind us
       const [i, j] = k.split(',').map(Number);
-      if (Math.hypot((i + 0.5) * cell - cx, (j + 0.5) * cell - cz) > range + cell * 1.5) {
+      if (centres.every(([cx, cz]) => Math.hypot((i + 0.5) * cell - cx, (j + 0.5) * cell - cz) > range + cell * 1.5)) {
         group.remove(g);
         g.children.forEach((m) => m.dispose?.());
         cells.delete(k);
@@ -375,23 +380,25 @@ export function buildUndergrowth(path, heightAt, { buildings = null, snow = null
     scene.onBeforeRender = function (renderer, sc, camera, target) {
       before.call(this, renderer, sc, camera, target);
       const fog = sc.fog;
-      update(camera, fog?.isFogExp2 ? FOG_GONE / fog.density : fog?.isFog ? fog.far : reach);
+      update(camera, fog?.isFogExp2 ? FOG_GONE / fog.density : fog?.isFog ? fog.far : reach, sc.userData.focus);
     };
   });
   return group;
 }
 
-/** Instances shrink into the ground between `fade.value.x` and `.y` metres from the camera (across the ground, not up). */
-function fadeWithDistance(mat, fade) {
+/** Instances shrink into the ground between `fade.value.x` and `.y` metres from the camera or the focus point, whichever is nearer (across the ground, not up). */
+function fadeWithDistance(mat, fade, focus) {
   const prev = mat.onBeforeCompile;
   mat.onBeforeCompile = (sh) => {
     prev?.(sh);
     sh.uniforms.uFade = fade;
+    sh.uniforms.uFocus = focus;
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nuniform vec2 uFade;')
+      .replace('#include <common>', '#include <common>\nuniform vec2 uFade, uFocus;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
   #ifdef USE_INSTANCING
-    transformed *= 1.0 - smoothstep(uFade.x, uFade.y, distance((modelMatrix * vec4(instanceMatrix[3].xyz, 1.0)).xz, cameraPosition.xz));
+    vec2 ip = (modelMatrix * vec4(instanceMatrix[3].xyz, 1.0)).xz;
+    transformed *= 1.0 - smoothstep(uFade.x, uFade.y, min(distance(ip, cameraPosition.xz), distance(ip, uFocus)));
   #endif`);
   };
   const key = mat.customProgramCacheKey;
