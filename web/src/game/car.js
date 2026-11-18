@@ -135,6 +135,7 @@ export class CarRig {
     this.vel = new THREE.Vector3();
     this._q = new THREE.Quaternion();
     this._tmp = new THREE.Vector3();
+    this._n = new THREE.Vector3();
   }
 
   /** What the windows reflect: a day or a night sky. */
@@ -173,15 +174,17 @@ export class CarRig {
    *  `roll` (rad, + = right side down) and `lift` (m) are extras on top, e.g. for grinding a guardrail. */
   poseOnRoad(path, s, lateral, angle = 0, lateralDemand = 0, { roll = 0, lift = 0 } = {}) {
     path.sample(s, lateral, this.o);
-    const fwd = this._tmp.copy(this.o.forward).applyQuaternion(this._q.setFromAxisAngle(UP, -angle));
+    // yaw about the road's own normal, not world up: sideways on a slope the car must lie in the road plane, not keep the road's pitch
+    const n = this._n.crossVectors(this.o.right, this.o.forward).normalize();
+    const fwd = this._tmp.copy(this.o.forward).applyQuaternion(this._q.setFromAxisAngle(n, -angle));
     const pos = lift ? this.o.pos.clone().addScaledVector(UP, lift) : this.o.pos;
-    this.poseBasis(pos, fwd, roll - THREE.MathUtils.clamp(lateralDemand / 300, -0.07, 0.07));
+    this.poseBasis(pos, fwd, roll - THREE.MathUtils.clamp(lateralDemand / 300, -0.07, 0.07), n);
   }
 
   /** Pose anywhere: position, nose direction, roll about the nose (rad). */
-  poseBasis(pos, fwd, roll = 0) {
+  poseBasis(pos, fwd, roll = 0, up0 = UP) {
     const f = this.fwd.copy(fwd).normalize();
-    const right = this.right.crossVectors(f, UP).normalize();
+    const right = this.right.crossVectors(f, up0).normalize();
     if (roll) right.applyQuaternion(this._q.setFromAxisAngle(f, roll));
     const up = new THREE.Vector3().crossVectors(right, f);
     const back = f.clone().negate();
