@@ -283,42 +283,118 @@ function palmTrees(path, heightAt, inTown, nearRoad, count) {
   });
 }
 
-/** Roadside undergrowth: solid low-poly bushes and dwarf-bamboo tufts, only drawn near the camera. */
-export function buildUndergrowth(path, heightAt, { bushes = 25000, tufts = 50000, buildings = null, near = 160 } = {}) {
-  const inTown = townMask(buildings), nearRoad = roadProximity(path), r = rng(7);
-  const band = { minRoad: 5, maxRoad: 24, bias: 1.3, maxSlope: 7 }; // 1.5 m beyond the road edge (clear of gutter & rail) out to ~20 m
-  const mat = mottled({ vertexColors: false }); // same dappling as the broadleaf crowns
-  // same colour pipeline as the trees (hex × tint) so the greens sit together, with a little hue wobble
-  const shade = (hex, k) => new THREE.Color(hex).offsetHSL((r() - 0.5) * 0.04, 0, 0).multiplyScalar(k);
-  let bushItems = scatter(path, heightAt, inTown, nearRoad, r, { ...band, count: bushes }, (x, y, z) => {
-    const k = 0.6 + r() * 1.0;
-    return { m: placeAt(r, x, y - 0.15 * k, z, k * (0.8 + r() * 0.5), k * (0.55 + r() * 0.3), k * (0.8 + r() * 0.5)),
-      c: shade(0x2a4a26, 0.55 + r() * 0.4) }; // a shade under the tree crowns: their facets face the sky
+/** Ground cover: solid low-poly bushes and dwarf-bamboo tufts over the whole terrain, thicker beside the road, and only
+ *  ever built around the camera. The world is cut into `cell`-metre squares; the ones near the camera are generated on
+ *  demand (the same plants every time: each square seeds its own RNG) and dropped again once the camera has left. Every
+ *  plant also shrinks into the ground with its distance from the camera, so what's at the edge of the ring is already
+ *  gone before a square is built or dropped, and nothing pops. It picks up snow like the trees (`snow` = `ground.snow`). */
+export function buildUndergrowth(path, heightAt, { buildings = null, snow = null, cell = 64, reach = 170 } = {}) {
+  const inTown = townMask(buildings), nearRoad = roadProximity(path), town = townness(buildings);
+  const BOOST = 3, DENSITY = { bush: 0.06, tuft: 0.15 };   // per m² away from the road; BOOST× within 20 m of it
+  const fade = { value: new THREE.Vector2(100, reach) };
+  const mat = fadeWithDistance(snowy(mottled({ vertexColors: false }), snow, false), fade); // same dappling as the broadleaf crowns
+  const bushGeo = new THREE.IcosahedronGeometry(0.6, 0).translate(0, 0.45, 0);              // 20 tris
+  const tuftGeo = new THREE.ConeGeometry(0.3, 0.8, 5, 1, true).translate(0, 0.4, 0);        // 5 tris
+  const group = new THREE.Group();
+  group.name = 'undergrowth';
+  const cells = new Map();                                                                  // "i,j" → THREE.Group (maybe empty)
+
+  const build = (ci, cj) => {
+    const r = rng(Math.imul(ci, 73856093) ^ Math.imul(cj, 19349663) ^ 0x7f4a), g = new THREE.Group();
+    // same colour pipeline as the trees (hex × tint) so the greens sit together, with a little hue wobble
+    const shade = (hex, k) => new THREE.Color(hex).offsetHSL((r() - 0.5) * 0.04, 0, 0).multiplyScalar(k);
+    for (const kind of ['bush', 'tuft']) {
+      const bush = kind === 'bush', maxSlope = bush ? 7 : 9, list = [];
+      for (let n = Math.round(cell * cell * DENSITY[kind] * BOOST); n > 0; n--) {
+        const x = (ci + r()) * cell, z = (cj + r()) * cell, boost = r() * BOOST;            // (always drawn, so a square stays the same)
+        const h = heightAt(x, z);
+        let keep = 1;
+        if (sparse && h < sparse.below) continue;                                           // the coastal plain / the sea
+        if (snow) keep -= 0.85 * THREE.MathUtils.smoothstep(h, snow.above + snow.band * 0.3, snow.above + snow.band); // buried higher up
+        if (r() >= keep) continue;
+        if (nearRoad(x, z, 5.2) || inTown(x, z)) continue;                                  // 1.5 m beyond the road edge: clear of gutter & rail
+        if (boost > 1 && !nearRoad(x, z, 20)) continue;                                     // away from the road: a third of the tries
+        if (buildings && r() < 0.8 * town(x, z)) continue;                                  // thinner towards town
+        if (Math.abs(heightAt(x + 2, z) - heightAt(x - 2, z)) + Math.abs(heightAt(x, z + 2) - heightAt(x, z - 2)) > maxSlope) continue;
+        if (bush) {
+          const k = 0.6 + r() * 1.0;
+          list.push({ m: placeAt(r, x, h - 0.15 * k, z, k * (0.8 + r() * 0.5), k * (0.55 + r() * 0.3), k * (0.8 + r() * 0.5)), c: shade(0x2a4a26, 0.55 + r() * 0.4) }); // a shade under the tree crowns: their facets face the sky
+        } else {
+          const k = 0.6 + r() * 0.8, m = placeAt(r, x, h - 0.08, z, k, k * (0.7 + r() * 0.6), k);
+          m.multiply(new THREE.Matrix4().makeRotationX((r() - 0.5) * 0.5));                 // lean a little, like grass does
+          list.push({ m, c: shade(0x3e5a24, 0.6 + r() * 0.45) });                           // dwarf bamboo: a touch yellower
+        }
+      }
+      if (!list.length) continue;
+      const mesh = new THREE.InstancedMesh(bush ? bushGeo : tuftGeo, mat, list.length);
+      list.forEach((it, i) => { mesh.setMatrixAt(i, it.m); mesh.setColorAt(i, it.c); });
+      mesh.computeBoundingSphere();
+      mesh.receiveShadow = true;                                                            // cells come after castShadows has run
+      g.add(mesh);
+    }
+    return g;
+  };
+
+  let first = true;
+  const update = (camera, fogCut) => {
+    const end = THREE.MathUtils.clamp(fogCut, 50, reach), cx = camera.position.x, cz = camera.position.z;
+    fade.value.set(end * 0.6, end);
+    const range = end + cell * 0.7;                                                         // squares from here on are already fully shrunk
+    const want = [];
+    for (let i = Math.floor((cx - range) / cell); i <= Math.floor((cx + range) / cell); i++) {
+      for (let j = Math.floor((cz - range) / cell); j <= Math.floor((cz + range) / cell); j++) {
+        const d = Math.hypot((i + 0.5) * cell - cx, (j + 0.5) * cell - cz);
+        if (d < range && !cells.has(`${i},${j}`)) want.push({ i, j, d });
+      }
+    }
+    want.sort((a, b) => a.d - b.d);
+    const budget = first ? Infinity : want.length > 12 ? 8 : 3;                             // all at once the first time, then a few a frame
+    for (const { i, j } of want.slice(0, budget)) {
+      const g = build(i, j);
+      cells.set(`${i},${j}`, g);
+      group.add(g);
+    }
+    first = false;
+    for (const [k, g] of cells) {                                                           // let go of squares well behind us
+      const [i, j] = k.split(',').map(Number);
+      if (Math.hypot((i + 0.5) * cell - cx, (j + 0.5) * cell - cz) > range + cell * 1.5) {
+        group.remove(g);
+        g.children.forEach((m) => m.dispose?.());
+        cells.delete(k);
+      }
+    }
+  };
+  // drive it from the scene's onBeforeRender (before three.js decides what to draw), chained like cullingGroup
+  group.addEventListener('added', () => {
+    const scene = group.parent;
+    if (!scene?.isScene || group.userData.hooked) return;
+    group.userData.hooked = true;
+    const before = scene.onBeforeRender;
+    scene.onBeforeRender = function (renderer, sc, camera, target) {
+      before.call(this, renderer, sc, camera, target);
+      const fog = sc.fog;
+      update(camera, fog?.isFogExp2 ? FOG_GONE / fog.density : fog?.isFog ? fog.far : reach);
+    };
   });
-  let tuftItems = scatter(path, heightAt, inTown, nearRoad, r, { ...band, count: tufts }, (x, y, z) => {
-    const k = 0.6 + r() * 0.8, m = placeAt(r, x, y - 0.08, z, k, k * (0.7 + r() * 0.6), k);
-    m.multiply(new THREE.Matrix4().makeRotationX((r() - 0.5) * 0.5)); // lean a little, like grass does
-    return { m, c: shade(0x3e5a24, 0.6 + r() * 0.45) }; // dwarf bamboo: a touch yellower
-  });
-  const town = townness(buildings);
-  bushItems = thinForTown(bushItems, town, { thin: 0.8, push: 5, minRoad: band.minRoad });
-  tuftItems = thinForTown(tuftItems, town, { thin: 0.8, push: 5, minRoad: band.minRoad });
-  // lower down, the verge is overgrown right up to the gutter curb and the guardrail posts (own RNG: the summit stays put)
-  const r2 = rng(271), verge = { minRoad: 4.6, maxRoad: 12, bias: 1.2, maxSlope: 7, ...lowland(buildings) };
-  const pick = (fn) => (...a) => fn(r2, ...a);
-  bushItems.push(...scatter(path, heightAt, inTown, nearRoad, r2, { ...verge, minRoad: 5.2, count: 20000 }, pick((rr, x, y, z) => {
-    const k = 0.6 + rr() * 0.9;
-    return { m: placeAt(rr, x, y - 0.15 * k, z, k * (0.8 + rr() * 0.5), k * (0.55 + rr() * 0.4), k * (0.8 + rr() * 0.5)), c: shade(0x2e5226, 0.6 + rr() * 0.45) };
-  })));
-  tuftItems.push(...scatter(path, heightAt, inTown, nearRoad, r2, { ...verge, count: 45000 }, pick((rr, x, y, z) => {
-    const k = 0.6 + rr() * 0.8, m = placeAt(rr, x, y - 0.08, z, k, k * (0.7 + rr() * 0.6), k);
-    m.multiply(new THREE.Matrix4().makeRotationX((rr() - 0.5) * 0.5));
-    return { m, c: shade(0x42602a, 0.65 + rr() * 0.45) };
-  })));
-  return cullingGroup('undergrowth', [
-    ...chunked(bushItems, new THREE.IcosahedronGeometry(0.6, 0).translate(0, 0.45, 0), mat, 80, near), // 20 tris
-    ...chunked(tuftItems, new THREE.ConeGeometry(0.3, 0.8, 5, 1, true).translate(0, 0.4, 0), mat, 80, near), // 5 tris
-  ]);
+  return group;
+}
+
+/** Instances shrink into the ground between `fade.value.x` and `.y` metres from the camera (across the ground, not up). */
+function fadeWithDistance(mat, fade) {
+  const prev = mat.onBeforeCompile;
+  mat.onBeforeCompile = (sh) => {
+    prev?.(sh);
+    sh.uniforms.uFade = fade;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nuniform vec2 uFade;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+  #ifdef USE_INSTANCING
+    transformed *= 1.0 - smoothstep(uFade.x, uFade.y, distance((modelMatrix * vec4(instanceMatrix[3].xyz, 1.0)).xz, cameraPosition.xz));
+  #endif`);
+  };
+  const key = mat.customProgramCacheKey;
+  mat.customProgramCacheKey = () => `${key.call(mat)}fade`;
+  return mat;
 }
 
 /** (x, z) → is it on or right next to a building? (so trees don't grow through the hotels) */
