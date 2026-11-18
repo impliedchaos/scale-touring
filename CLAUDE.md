@@ -13,14 +13,15 @@ README.md has the user-facing docs and the per-site pipeline; TODO.md has the li
 ## Rules that aren't visible in the code
 
 - **Credit everything, CC0 included.** `CREDITS.md` is the single source; it is rendered in-game
-  (`web/src/game/credits.js` imports it `?raw`). `tools/build_music.py` fails the build if a track title isn't in it (there are no songs right now).
+  (`web/src/game/credits.js` imports it `?raw`). `tools/build_music.py` fails the build if a track title isn't in it (songs are listed in `assets/songs/tracks.json`).
   Every new place needs its terrain source and OSM (ODbL) added.
 - **Check a data source's licence before using it** and record it in the fetcher's docstring and `CREDITS.md`.
 - `assets/fc/` (RX-7 FC) is **CC-BY-ND** and was deliberately not copied here. Never convert or ship it.
   The RX-7 used is `assets/rx7fc-ivofficial/` (CC-BY 3.0, fine).
 - Original characters only; no manga characters, team names, shop decals or soundtrack.
 - **Don't deploy anywhere** unless asked in that moment. There is no itch.io or Android tooling in this repo
-  (left behind on purpose, so nothing here can push to the game's page).
+  (left behind on purpose, so nothing here can push to the game's page). But **a push to `main` deploys**:
+  `.github/workflows/pages.yml` builds and publishes the site to GitHub Pages, so pushing to `main` counts as deploying.
 - Downloaders must be resumable: write to `.part` and rename when complete, so a crash doesn't lose finished work.
 - Dave views changes on his own dev server (`:5174`); a preview on `:4173` is just for tests.
 - Per-place content goes in `SITES` in `tools/build_site.py` (title, forest, ground, credits), not in selection logic in the web code.
@@ -29,7 +30,7 @@ README.md has the user-facing docs and the per-site pipeline; TODO.md has the li
 
 All from `web/`:
 
-- `npm run dev`: Vite dev server (`predev` runs `tools/build_music.py`, a no-op while there are no songs). `npm run build`: `web/dist/`.
+- `npm run dev`: Vite dev server (`predev` runs `tools/build_music.py`, which re-encodes `assets/songs/` to `web/public/music/` with ffmpeg and skips unchanged tracks). `npm run build`: `web/dist/`.
   `npm run preview -- --port 4173` serves it. Stop it with `pkill -f "vite previe[w]"` (the bracket keeps pkill from matching its own shell).
 - There is no test suite or linter. Verify by eye: build, then screenshot headless:
   `google-chrome --headless=new --enable-unsafe-swiftshader --use-angle=swiftshader --mute-audio --virtual-time-budget=60000 --window-size=1000,560 --screenshot=out.png "http://localhost:4173/?site=hk&day&still&s=2500"`
@@ -80,6 +81,6 @@ on the valley side. Always fills DEM nodata (sea would otherwise give NaN terrai
 
 **Cars.** `tools/build_car.py` builds `web/public/models/<id>.glb` and `cars.json` from `assets/<folder>/`.
 
-**Inherited.** The audio engine (`src/audio/`; the fly-by drives it from `course/audio.js` (the car is the positional "rival" voice; engine and music off by default); the `Music` class waits for songs), the car rig (`game/car.js`)
+**Inherited.** The audio engine (`src/audio/`; the fly-by drives it from `course/audio.js` (the car is the positional "rival" voice; engine and music off by default); the `Music` class plays `web/public/music/playlist.json`), the car rig (`game/car.js`)
 and the 86's drift choreography (`course/drift.js`), and `garage.js`. The game's race, rivals, director, HUD and map were removed.
 See the game's CLAUDE.md for how the shared parts work.

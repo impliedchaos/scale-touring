@@ -13,3 +13,6 @@ assets/fc/
 .DS_Store
 *.log
 __pycache__/
+
+# generated (tools/export_blender.py)
+data/blender/
