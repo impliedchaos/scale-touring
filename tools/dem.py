@@ -6,7 +6,7 @@
 
 The sidecar JSON (written by tools/fetch_*_dem.py) names the grid CRS, the north-west corner (x0, y0),
 the spacing and the source credit. Supported CRS: EPSG:31983 (SIRGAS 2000 / UTM 23S), EPSG:2326
-(Hong Kong 1980 Grid) EPSG:26910 (NAD83 / UTM 10N) and EPSG:32632 (WGS 84 / UTM 32N) and EPSG:3857 (Web Mercator, the GSI tiles: `step` is in mercator metres, not ground metres). Add one by writing a `lonlat -> (x, y)` function and registering it in CRS.
+(Hong Kong 1980 Grid) EPSG:26910 (NAD83 / UTM 10N), EPSG:26913 (NAD83 / UTM 13N) and EPSG:32632 (WGS 84 / UTM 32N) and EPSG:3857 (Web Mercator, the GSI tiles: `step` is in mercator metres, not ground metres). Add one by writing a `lonlat -> (x, y)` function and registering it in CRS.
 
 The HK1980 datum is ~100 m off WGS84, so it goes through a 7-parameter Helmert shift. Parameters and
 rotation convention were checked against the HK Geodetic Survey's official transform service
@@ -50,6 +50,11 @@ def utm10n(lon, lat):
     """EPSG:26910 (NAD83 / UTM 10N; USGS 3DEP, central California). NAD83 is only ~1-2 m from WGS84 there, so no datum shift
     (fine for 1 m LiDAR under a road that OSM places to a few metres; not for anything needing sub-metre agreement)."""
     return _tm(lon, lat, WGS84, 0.0, -123.0, 0.9996, 500000.0, 0.0)
+
+
+def utm13n(lon, lat):
+    """EPSG:26913 (NAD83 / UTM 13N; USGS 3DEP, New Mexico). Same ~1-2 m NAD83 vs WGS84 caveat as utm10n."""
+    return _tm(lon, lat, WGS84, 0.0, -105.0, 0.9996, 500000.0, 0.0)
 
 
 def utm32n(lon, lat):
@@ -101,7 +106,7 @@ def web_mercator(lon, lat):
     return R * np.radians(lon), R * np.log(np.tan(np.pi / 4 + np.radians(lat) / 2))
 
 
-CRS = {"EPSG:31983": utm23s, "EPSG:2326": hk1980, "EPSG:26910": utm10n, "EPSG:32632": utm32n, "EPSG:3857": web_mercator}
+CRS = {"EPSG:31983": utm23s, "EPSG:2326": hk1980, "EPSG:26910": utm10n, "EPSG:26913": utm13n, "EPSG:32632": utm32n, "EPSG:3857": web_mercator}
 
 
 class Dem:

@@ -65,6 +65,13 @@ SITES = {
                    ground=dict(green="#586a3a", scrub="#76733f", rock="#a39884", rockFlat=0.75, sand="#d8c8a0", sandBelow=2.0),
                    credits=["Terrain: IGN RGE ALTI (Licence Ouverte 2.0), 1 m LiDAR terrain model",
                             "Road: © OpenStreetMap contributors (ODbL)"]),
+    "abq": dict(title=["SANDIA CREST SCENIC BYWAY", "NM 536 · SANDIA PARK → SANDIA CREST · NEW MEXICO"], start_name="Sandia Crest", route="data/abq_route.json",
+                dem="assets/abq/dem_abq", crest=False,   # stored crest to NM 14: the default (uphill) drive climbs to the crest
+                cell=8.0, margin=500.0, dem_smooth=0.0, flat_r=8.0, blend_r=28.0, y_smooth=15.0,   # 8 m cells: the 22 km road's box is 10 x 7 km
+                forest=dict(count=30000, young=4000, roadsideBroadleaf=300, wideBroadleaf=0),
+                ground=dict(green="#56653a", scrub="#8a7b55", rock="#9d9087", rockFlat=0.78),   # dry high-desert scrub, pink-grey Sandia granite
+                credits=["Terrain: U.S. Geological Survey, 3D Elevation Program (3DEP) 1 m DEM, NM_North_Central_FEMA_R6_Lidar_2016_D17 (public domain)",
+                         "Road: © OpenStreetMap contributors (ODbL)"]),
     "nagasaki": dict(title=["INASAYAMA", "MT. INASA ROADS · NAGASAKI · JAPAN"], start_name="the summit", route="data/nagasaki_route.json",
                      dem="assets/nagasaki/dem_inasa", crest=False,   # stored summit to harbour: the default (uphill) drive climbs to the summit
                      cell=6.0, margin=500.0, dem_smooth=1.0, flat_r=8.0, blend_r=28.0, y_smooth=15.0,

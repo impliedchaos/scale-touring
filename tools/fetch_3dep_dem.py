@@ -7,11 +7,16 @@ Source : The National Map's 1 m DEM GeoTIFFs on S3 (prd-tnm.s3.amazonaws.com), f
          byte ranges, so only the blocks in the box around the route (its bounding box plus --margin; or within --margin of the line with --corridor) are fetched (~200 KB each), not the 70-370 MB files.
 
     python3 tools/fetch_3dep_dem.py --route data/bigsur_route.json --out assets/bigsur/dem_bigsur [--margin 600] [--step 2] [--corridor]
+    python3 tools/fetch_3dep_dem.py --route data/abq_route.json --out assets/abq/dem_abq --epsg 26913 --opr --project NM_North_Central_FEMA
+
+`--opr` reads the project's Original Product Resolution tiles (1.5 km, 512 px blocks) instead of the 10 km "1 meter" product, which some
+projects (the FEMA 2016 one over the Sandias) don't publish for their whole area. `--project` picks the project by name: the default, the
+newest, can be a neighbouring county's that only clips a corner of the route.
 
 Needs `tifffile` and `imagecodecs` (the usual project Python has neither on its -I path: run it as
 `PYTHONPATH=<dir with imagecodecs> python3 tools/fetch_3dep_dem.py ...`, from outside the repo's data folders).
 Output : <out>.npy + <out>.json, the format tools/dem.py reads: float32 at --step metres (1 m source, block-averaged), rows
-         north to south, grid CRS read from the tiles (EPSG:26910 = NAD83 / UTM 10N is the one dem.py knows). Nodata (the sea,
+         north to south, grid CRS read from the tiles (--epsg: 26910 = NAD83 / UTM 10N, the default, or 26913 = UTM 13N; both are in dem.py). Nodata (the sea,
          outside the corridor) is NaN. The output goes in assets/ (an input, not committed).
 Resumable: progress (sums, counts, finished blocks) is saved to <out>.part.npz / .part.json every 60 blocks and kept until
          the final files are written, so rerunning the same command carries on.
@@ -25,9 +30,11 @@ import dem as demlib
 
 API = "https://tnmaccess.nationalmap.gov/api/v1/products"
 DATASET = "Digital Elevation Model (DEM) 1 meter"
+OPR_DATASET = "Original Product Resolution (OPR) Digital Elevation Model (DEM)"
 UA = {"User-Agent": "touring/0.1 (hobby project)"}
-BLOCK = 256
 CHECKPOINT = 60
+# OPR tiles are in NAD83(2011) UTM (6339..6348); the same projection as the NAD83 UTM zone dem.py knows, to a few cm
+EPSG_ALIAS = {6342: 26913}
 
 
 class RangeFile:
@@ -57,16 +64,21 @@ def get_range(url, off, n, tries=5):
             print(f"  retry {k + 1} ({e})", file=sys.stderr)
 
 
-def find_tiles(bbox):
-    q = urllib.parse.urlencode({"datasets": DATASET, "bbox": ",".join(f"{v:.5f}" for v in bbox), "max": 100})
+def find_tiles(bbox, dataset=DATASET, project=None):
+    q = urllib.parse.urlencode({"datasets": dataset, "bbox": ",".join(f"{v:.5f}" for v in bbox), "max": 500})
     items = json.load(urllib.request.urlopen(urllib.request.Request(f"{API}?{q}", headers=UA), timeout=90))["items"]
     proj = {}
     for it in items:
         m = re.search(r"/Projects/([^/]+)/", it["downloadURL"])
         proj.setdefault(m.group(1) if m else "?", []).append(it)
+    if project:
+        match = [k for k in proj if project in k]
+        if len(match) != 1: sys.exit(f"--project {project!r} matches {match or 'nothing'}; projects here: {', '.join(proj)}")
+        return match[0], proj[match[0]]
     best = max(proj, key=lambda k: max(i["publicationDate"] for i in proj[k]))  # the most recently published project
     if len(proj) > 1:
-        print(f"note: {len(proj)} LiDAR projects cover this area ({', '.join(proj)}); using {best}", file=sys.stderr)
+        print(f"note: {len(proj)} LiDAR projects cover this area ({', '.join(proj)}); using {best}. Pass --project to choose, "
+              f"as the newest can be a neighbouring county's that only clips the corner.", file=sys.stderr)
     return best, proj[best]
 
 
@@ -76,13 +88,17 @@ def main():
     ap.add_argument("--margin", type=float, default=700.0, help="metres around the route to fetch")
     ap.add_argument("--corridor", action="store_true", help="only fetch blocks within --margin of the road, not the whole box around it "
                     "(cells outside it come out as nodata, which a site with a sea turns into water; use only if the box is mostly sea)")
+    ap.add_argument("--epsg", type=int, default=26910, help="the tiles' grid CRS, a NAD83 UTM zone dem.py knows: 26910 (zone 10N, California) or 26913 (zone 13N, New Mexico)")
+    ap.add_argument("--project", help="LiDAR project to use (a substring of its name); default: the most recently published one covering the route")
+    ap.add_argument("--opr", action="store_true", help="read the Original Product Resolution DEM tiles (about 1.5 km, 1 m) instead of the 10 km '1 meter' product, "
+                    "for areas where a project is published only as OPR (Sandia Crest is)")
     ap.add_argument("--step", type=int, default=2, help="output spacing in metres (whole number; the source is 1 m)")
     a = ap.parse_args()
     S = a.step
 
     route = json.load(open(a.route))["points"]
     lat = np.array([p["lat"] for p in route]); lon = np.array([p["lon"] for p in route])
-    rx, ry = demlib.utm10n(lon, lat)
+    rx, ry = demlib.CRS[f"EPSG:{a.epsg}"](lon, lat)
     # densify the route so "distance to the road" is distance to the line, not to a node
     seg = np.hypot(np.diff(rx), np.diff(ry))
     dx, dy = [], []
@@ -98,7 +114,7 @@ def main():
     print(f"grid {nx} x {ny} cells of {S} m ({nx * S / 1000:.1f} x {ny * S / 1000:.1f} km)", file=sys.stderr)
 
     pad = 0.03
-    project, tiles = find_tiles((lon.min() - pad, lat.min() - pad, lon.max() + pad, lat.max() + pad))
+    project, tiles = find_tiles((lon.min() - pad, lat.min() - pad, lon.max() + pad, lat.max() + pad), OPR_DATASET if a.opr else DATASET, a.project)
     print(f"{len(tiles)} tiles from {project}", file=sys.stderr)
 
     part_npz, part_json = a.out + ".part.npz", a.out + ".part.json"
@@ -124,19 +140,21 @@ def main():
             tp, scale = page.tags["ModelPixelScaleTag"].value, page.tags["ModelTiepointTag"].value
             geokeys = page.tags["GeoKeyDirectoryTag"].value
             epsg = next(geokeys[i + 3] for i in range(4, len(geokeys), 4) if geokeys[i] == 3072)
-            if f"EPSG:{epsg}" != "EPSG:26910" or abs(tp[0] - 1) > 1e-6 or abs(tp[1] - 1) > 1e-6:
-                sys.exit(f"{url}: expected 1 m pixels in EPSG:26910, got EPSG:{epsg} at {tp[:2]} m")
-            crs = f"EPSG:{epsg}"
+            if EPSG_ALIAS.get(epsg, epsg) != a.epsg or abs(tp[0] - 1) > 1e-6 or abs(tp[1] - 1) > 1e-6:
+                sys.exit(f"{url}: expected 1 m pixels in EPSG:{a.epsg}, got EPSG:{epsg} at {tp[:2]} m")
+            crs = f"EPSG:{a.epsg}"
             E0, N0 = round(scale[3]), round(scale[4])         # NW corner of the NW pixel (integer metres)
             W, H = page.imagewidth, page.imagelength
-            per = -(-W // BLOCK)
+            if not page.is_tiled: sys.exit(f"{url}: not an internally tiled GeoTIFF, so it can't be read block by block")
+            BW, BH = page.tilewidth, page.tilelength
+            per = -(-W // BW)
             offsets, counts = page.dataoffsets, page.databytecounts
             want = []
-            for br in range(-(-H // BLOCK)):
+            for br in range(-(-H // BH)):
                 for bc in range(per):
-                    cx, cy = E0 + bc * BLOCK + BLOCK / 2, N0 - br * BLOCK - BLOCK / 2
-                    near = (tree.query([cx, cy])[0] <= a.margin + BLOCK * 0.71 if a.corridor
-                            else Eo - BLOCK <= cx <= Eo + nx * S + BLOCK and No - ny * S - BLOCK <= cy <= No + BLOCK)
+                    cx, cy = E0 + bc * BW + BW / 2, N0 - br * BH - BH / 2
+                    near = (tree.query([cx, cy])[0] <= a.margin + max(BW, BH) * 0.71 if a.corridor
+                            else Eo - BW <= cx <= Eo + nx * S + BW and No - ny * S - BH <= cy <= No + BH)
                     if near and (url, br, bc) not in done:
                         want.append((br, bc))
             print(f"{os.path.basename(url)}: {len(want)} blocks to fetch", file=sys.stderr)
@@ -148,10 +166,10 @@ def main():
             with ThreadPoolExecutor(8) as ex:
                 for n, (b, segarr) in enumerate(ex.map(work, want), 1):
                     br, bc = b
-                    v = np.squeeze(segarr)[:min(BLOCK, H - br * BLOCK), :min(BLOCK, W - bc * BLOCK)].astype(np.float32)
+                    v = np.squeeze(segarr)[:min(BH, H - br * BH), :min(BW, W - bc * BW)].astype(np.float32)
                     rr, cc = np.mgrid[0:v.shape[0], 0:v.shape[1]]
-                    top = N0 - (br * BLOCK + rr)                # top edge of each pixel (N)
-                    left = E0 + bc * BLOCK + cc                 # left edge of each pixel (E)
+                    top = N0 - (br * BH + rr)                   # top edge of each pixel (N)
+                    left = E0 + bc * BW + cc                    # left edge of each pixel (E)
                     cell_r, cell_c = (No - top) // S, (left - Eo) // S
                     ok = np.isfinite(v) & (v > -1000) & (cell_r >= 0) & (cell_r < ny) & (cell_c >= 0) & (cell_c < nx)
                     flat = (cell_r * nx + cell_c)[ok]

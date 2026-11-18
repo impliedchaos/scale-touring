@@ -17,6 +17,7 @@ driving itself.
 | Amalfi Coast, Italy | SS 163 (Strada Statale Amalfitana), Positano → Fiordo di Furore, 12 km | `?site=amalfi` |
 | Nagasaki, Japan | Mt. Inasa summit road down to the harbour, 4 km (GSI 5 m DEM) | `?site=nagasaki` |
 | Monaco | Moyenne Corniche (D 6007) from Èze down through Monaco to Port Hercule, 7.5 km (IGN RGE ALTI) | `?site=monaco` |
+| Sandia Crest, New Mexico | Sandia Crest Scenic Byway (NM 536), Sandia Park → Sandia Crest, 21 km, 2,100 m to 3,240 m (USGS 3DEP 1 m) | `?site=abq` |
 
 More are listed in [TODO.md](TODO.md).
 
@@ -79,6 +80,8 @@ header, title, tree and ground settings), `terrain.bin` (height grid), `roads.js
 (bare-earth LiDAR has the valley floor under it, not the deck), leaves the terrain below it uncarved, and writes the spans to `course.json` (`bridges`, in metres of `s`); `buildBridges` in `structures.js` puts a slab, an arch and columns under each span (cast shadows). Tunnels (`tunnels` in the route, OSM `tunnel=*`) are the reverse: the road runs level between the portals under the hill, the terrain above is kept (at least a 6 m roof), there is no guardrail, `buildTunnels` (structures.js) adds a dark arch tube and a concrete frame at each end, and the terrain material discards the arch-shaped volume at each portal (`tunnelPortals` / `cutPortals`; the 6 m heightfield can only make a ramp over the road, so the opening is cut in the shader), and `check_terrain.py` skips them (+8 m at each portal). Routes without those fields (Rio, Hong Kong) are unaffected.
 
 Big Sur's route is stored north to south so that the default (uphill) drive heads north with the sea on the left; `stitch_hk_route.py --names "" --label "..."` keeps every way in a CA 1 query.
+
+Sandia's route is stored crest to NM 14 (the default drive climbs to the crest). Its LiDAR project is published as 1.5 km "original resolution" tiles only over the crest, so it was fetched with `fetch_3dep_dem.py --epsg 26913 --opr --project NM_North_Central_FEMA` (the newest project over the area, Santa Fe County's, only clips a corner). OSM has just ~120 buildings along it.
 
 Amalfi's route is stored west to east (Positano first) so that the default drive heads west with the sea on the left and ends in Positano.
 

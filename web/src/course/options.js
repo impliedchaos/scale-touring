@@ -13,6 +13,7 @@ export const PLACES = [
   { id: 'amalfi', label: 'Amalfi Coast, Italy' },
   { id: 'nagasaki', label: 'Nagasaki, Japan' },
   { id: 'monaco', label: 'Monaco' },
+  { id: 'abq', label: 'Sandia Crest, New Mexico' },
 ];
 export const PACES = [0.25, 0.5, 1, 2, 4, 8];
 
