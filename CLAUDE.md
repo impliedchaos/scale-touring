@@ -35,7 +35,9 @@ All from `web/`:
 
 - `npm run dev`: Vite dev server (`predev` runs `tools/build_music.py`, which re-encodes `assets/songs/` to `web/public/music/` with ffmpeg and skips unchanged tracks). `npm run build`: `web/dist/`.
   `npm run preview -- --port 4173` serves it. Stop it with `pkill -f "vite previe[w]"` (the bracket keeps pkill from matching its own shell).
-- There is no test suite or linter. Verify by eye: build, then screenshot headless:
+- No unit tests or linter. Two checks: `tools/check_terrain.py` (data) and `node tools/smoke.mjs <url>` against a running build,
+  which loads every place (the first from the URL, the rest swapped in like the menu does) and exits 1 on an exception,
+  a console.error, a failed request or a place that doesn't build. Neither judges the picture. Verify that by eye: build, then screenshot headless:
   `google-chrome --headless=new --enable-unsafe-swiftshader --use-angle=swiftshader --mute-audio --virtual-time-budget=60000 --window-size=1000,560 --screenshot=out.png "http://localhost:4173/?site=hk&day&still&s=2500"`
 - `?still` freezes (for screenshots), `?s=<metres>` picks the position, `?fps` shows a frame counter.
   Anything involving audio or real timers: `node tools/cdp-eval.mjs <url> <secs> "<js expr>"` (`CDP_NO_AUTOPLAY=1` simulates autoplay blocked).
