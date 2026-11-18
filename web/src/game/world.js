@@ -95,9 +95,10 @@ THREE.ShaderChunk.lights_fragment_begin = THREE.ShaderChunk.lights_fragment_begi
 		#if NUM_DIR_LIGHT_SHADOWS > 1 && UNROLLED_LOOP_INDEX == 0
 		if ( directLight.visible && receiveShadow ) {
 			float moonWhole = getShadow( directionalShadowMap[ 0 ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowIntensity, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ 0 ] );
-			float moonNear = mix( getShadow( directionalShadowMap[ 1 ], ${S1}.shadowMapSize, ${S1}.shadowIntensity, ${S1}.shadowBias, ${S1}.shadowRadius, vDirectionalShadowCoord[ 1 ] ), 1.0,
-				smoothstep( 0.3, 0.48, max( abs( vDirectionalShadowCoord[ 1 ].x - 0.5 ), abs( vDirectionalShadowCoord[ 1 ].y - 0.5 ) ) ) );
-			directLight.color *= min( moonWhole, moonNear );
+			float nearEdge = smoothstep( 0.3, 0.48, max( abs( vDirectionalShadowCoord[ 1 ].x - 0.5 ), abs( vDirectionalShadowCoord[ 1 ].y - 0.5 ) ) );
+			float moonNear = mix( getShadow( directionalShadowMap[ 1 ], ${S1}.shadowMapSize, ${S1}.shadowIntensity, ${S1}.shadowBias, ${S1}.shadowRadius, vDirectionalShadowCoord[ 1 ] ), 1.0, nearEdge );
+			// the whole-mountain map is ~1 m a texel: on walls and roofs the moon grazes it shows as blocky acne, so it only takes over as the sharp square fades
+			directLight.color *= min( mix( 1.0, moonWhole, nearEdge ), moonNear );
 		}
 		#elif NUM_DIR_LIGHT_SHADOWS > 1 && UNROLLED_LOOP_INDEX == 1
 		// the sharp square's own light gives no light: nothing to shade
