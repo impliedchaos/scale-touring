@@ -86,7 +86,7 @@ export function buildRoad(path, { centre = 'yellow' } = {}) {
 
 /** Under the surface: a slab ROAD_BODY.thick thick (the road is the top face) whose lower part also juts `flange` out each side, so the
  *  cross-section is an upside-down T. It closes the gap wherever the ground falls away from the road, and the guardrail posts stand on it. */
-export const ROAD_BODY = { thick: 0.5, flangeTop: 0.2, flange: 0.5 };   // flangeTop: just above the terrain's carved level (0.25 under the road), so they don't z-fight
+export const ROAD_BODY = { thick: 0.5, flangeTop: 0.3, flange: 0.85 };   // flangeTop: just under the terrain's carved level (0.25 under the road) and the gutter floor (0.2), so they don't z-fight; flange: reaches under the rail posts
 
 function buildRoadBody(pts, half) {
   const { thick, flangeTop, flange } = ROAD_BODY, w = half + flange;
@@ -157,7 +157,7 @@ export function buildGuardrails(path, course) {
   const postMat = new THREE.MeshStandardMaterial({ color: 0xb8b6ae, roughness: 0.6 });
   const reflMat = new THREE.MeshBasicMaterial({ color: 0xff9a1f });
   const posts = [], refls = [];
-  const off = path.half + ROAD_BODY.flange - 0.15;   // on the flange: the posts are 0.12 wide
+  const off = path.half + 0.7;
   const tmp = new THREE.Vector3();
 
   // open the rail where a side road joins (just the mesh: the gameplay rail flags stay as they are)
