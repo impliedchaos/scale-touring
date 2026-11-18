@@ -35,7 +35,7 @@ Anything coarser than ~5 m looks blocky (30 m global models such as Copernicus G
 - [x] Footpaths and steps are drawn as narrow paths in Rio (`build_roads.py --site rio --paths`; 308 of 682 pieces).
 - [ ] Hong Kong: only ~45% of buildings have height tags, the rest are guessed.
 - [ ] Confirm the CSDI portal's terms for the CEDD LiDAR data (the credit follows the DATA.GOV.HK attribution terms).
-- [ ] A way to pick a site from the page, instead of editing the URL.
+- [x] A way to pick a site from the page, instead of editing the URL (the Esc menu's place row, and auto-cycle).
 - [x] Strip the race, rivals, director, HUD, map, demo and songs (done); the default page is the fly-by with an Esc options menu.
-- [ ] Add new music (see README, Sound), and hook the audio engine up to the fly-by car if wanted.
+- [x] Add new music (see README, Sound), and hook the audio engine up to the fly-by car (`course/audio.js`; engine and music off by default).
 - [ ] The palms: the new frond geometry is ~20 boxes each, so check frame rate on weaker machines.

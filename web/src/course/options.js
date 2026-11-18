@@ -24,7 +24,7 @@ export const LIVE = ['pace', 'text', 'fps', 'engine', 'music', 'song', 'cycle'];
 
 const KEY = 'touring-options';
 const OFF = new Set(['0', 'false', 'off', 'no', 'none']);
-// URL parameter behind each option, for stripping them off the address when the menu reloads the page
+// URL parameter behind each option, for stripping them off the address once the menu has changed a choice
 export const URL_KEYS = ['site', 'day', 'weather', 'car', 'tiltshift', 'shadows', 'uphill', 'fps', 'engine', 'music', 'song', 'cycle'];
 
 const flag = (params, name) => { const v = params.get(name); return v !== null && !OFF.has(v); };

@@ -51,8 +51,8 @@ The README walks through it.
 `?audiotest`. No racing: the car drives itself (`course/showcase.js` `BootlegCar`, tuning per car in `course/drivers.js`).
 
 **Options.** `course/options.js` merges defaults ← `localStorage` ← URL params (URL wins). `course/menu.js` is the Esc menu: LIVE options
-(pace, engine, music, text, fps) apply at once, WORLD options (place, time, weather, car, direction, tilt-shift, shadows) are staged and *Apply* reloads
-the page. A new option = a default in `DEFAULTS`, a parse line in `loadOptions`, and a row in `flyby.js`. A new place = a folder in
+(pace, engine, music, song, text, fps, cycle: `LIVE` in options.js) apply at once, WORLD options (place, time, weather, car, direction, tilt-shift, shadows)
+rebuild the scene in place as soon as they change (`swap` in flyby.js; no page reload, the music carries on). A new option = a default in `DEFAULTS`, a parse line in `loadOptions`, and a row in `flyby.js`. A new place = a folder in
 `web/public/track/` **and** an entry in `PLACES` (options.js).
 
 **Look.** Synthwave palette and the thin wide-tracked type are CSS variables at the top of `web/index.html`; the night sky is indigo in `world.js`.
