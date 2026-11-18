@@ -291,6 +291,7 @@ function palmTrees(path, heightAt, inTown, nearRoad, count) {
 export function buildUndergrowth(path, heightAt, { buildings = null, snow = null, colors = null, cell = 64, reach = 170 } = {}) {
   const inTown = townMask(buildings), nearRoad = roadProximity(path), town = townness(buildings);
   const bushHex = colors?.bush || 0x2a4a26, tuftHex = colors?.tuft || 0x3e5a24;     // `ground.bush` / `ground.tuft` in course.json: tumbleweeds in the desert
+  const thin = colors?.brush ?? 1;                                                       // `ground.brush` in course.json: 0..1, sparser in the desert
   const BOOST = 3, DENSITY = { bush: 0.06, tuft: 0.15 };   // per m² away from the road; BOOST× within 20 m of it
   const fade = { value: new THREE.Vector2(100, reach) };
   const mat = fadeWithDistance(snowy(mottled({ vertexColors: false }), snow, false), fade); // same dappling as the broadleaf crowns
@@ -306,7 +307,7 @@ export function buildUndergrowth(path, heightAt, { buildings = null, snow = null
     const shade = (hex, k) => new THREE.Color(hex).offsetHSL((r() - 0.5) * 0.04, 0, 0).multiplyScalar(k);
     for (const kind of ['bush', 'tuft']) {
       const bush = kind === 'bush', maxSlope = bush ? 7 : 9, list = [];
-      for (let n = Math.round(cell * cell * DENSITY[kind] * BOOST); n > 0; n--) {
+      for (let n = Math.round(cell * cell * DENSITY[kind] * BOOST * thin); n > 0; n--) {
         const x = (ci + r()) * cell, z = (cj + r()) * cell, boost = r() * BOOST;            // (always drawn, so a square stays the same)
         const h = heightAt(x, z);
         let keep = 1;
