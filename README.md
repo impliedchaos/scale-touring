@@ -45,6 +45,7 @@ The URL overrides the saved options (so test links stay exact). Flags are on whe
 | `site=<name>` | which place (a folder in `web/public/track/`); default Rio; `site=harasu` (or empty) = Route 33, Mt. Haruna. The menu's list is `PLACES` in `course/options.js` |
 | `car=<id>` / `car=none` | the car to chase (default `rx7`; any id in `cars.json`); `none` = the drone just flies the road. Each car's tuning is in `course/drivers.js` |
 | `view=drone\|wide\|chase\|hood\|trackside` | camera (default `drone`); `Space` cycles |
+| `undergrowth=0` | no ground cover (bushes and tufts, streamed in around the camera); the menu's *Ground cover* switches it live |
 | `tiltshift=0\|1\|2` | the blur only, independent of the camera: off / 1 estimated (by screen height) / 2 depth map (default). It fades out on its own for low views |
 | `uphill=0` | start at the top and descend (default is uphill) |
 | `engine=<0..1>`, `music=<0..1>` | volume (both off by default; a bare `engine` or `music` = full, `0` = off; the menu has a slider for each) |

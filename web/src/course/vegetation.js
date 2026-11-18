@@ -379,6 +379,7 @@ export function buildUndergrowth(path, heightAt, { buildings = null, snow = null
     const before = scene.onBeforeRender;
     scene.onBeforeRender = function (renderer, sc, camera, target) {
       before.call(this, renderer, sc, camera, target);
+      if (!group.visible) return;
       const fog = sc.fog;
       update(camera, fog?.isFogExp2 ? FOG_GONE / fog.density : fog?.isFog ? fog.far : reach, sc.userData.focus);
     };

@@ -2,7 +2,7 @@
 // Esc opens the options menu, which pauses everything. Other keys: Space camera view · [ ] pace · H hide the text · R restart.  Pad: START menu · A camera · L1/R1 pace · Y text.
 // Options (course/options.js) come from the menu (remembered), and the URL overrides them for tests and screenshots:
 //      ?site=rio|hk|bigsur another place (tools/build_site.py) · ?day · ?weather=clear|wet|rain|fog|wetfog · ?uphill (start at the bottom)
-//      ?car=<id>|none the car to chase (default rx7; none = the drone just flies the road) · ?view=drone|wide|chase|hood|trackside the camera · ?tiltshift=0|1|2 the miniature blur off · blurred by screen height (estimated) · by scene depth (bare = 2)
+//      ?car=<id>|none the car to chase (default rx7; none = the drone just flies the road) · ?view=drone|wide|chase|hood|trackside the camera · ?undergrowth=0 no ground cover · ?tiltshift=0|1|2 the miniature blur off · blurred by screen height (estimated) · by scene depth (bare = 2)
 //      ?shadows=0|1|2 off · headlights and the moon's, coarse · plus the moon's sharp near the camera (bare ?shadows = 2)
 //      ?fps frame-rate counter · ?engine=<0..1> ?music=<0..1> volume (bare = full) · ?song=<file in music/playlist.json>
 // Test-only:  ?s=<metres> start position · ?speed=<m/s> drone speed with no car · ?still freezes (for screenshots)
@@ -76,6 +76,7 @@ async function start() {
   scene.userData.focus = cameras.focus;  // what the ground cover stays grown around
   applyView();
   applyTilt();
+  applyUndergrowth();
   audio.rebind({ car, carId, spec: cars[carId], weather });
   if (params.has('log')) window.__flyby = { audio, swap, applyTilt, applyView, cameras, opt, car, tilt, camera, path, renderer, scene, moonShadow: world.moonShadow, get s() { return car ? car.s : s; }, set s(v) { if (car) car.s = v; else s = v; } }; // poke at it from tests / devtools
   renderer.setAnimationLoop(frame);
@@ -86,6 +87,12 @@ function applyView() {
   const id = cameras.set(opt.view);
   if (id !== opt.view) { opt.view = id; menu.render(); }
   tilt?.reset();
+}
+
+/** Ground cover is live: the world always has it, the option just shows or hides it (hidden, it builds nothing either). */
+function applyUndergrowth() {
+  const g = scene.getObjectByName('undergrowth');
+  if (g) g.visible = opt.undergrowth;
 }
 
 /** Tilt-shift is live and is only the blur: the blur pass and its depth mode, nothing about the camera. */
@@ -175,6 +182,7 @@ const menu = new Menu({
     { key: 'uphill', label: 'Starting direction', values: [[false, 'Downhill'], [true, 'Uphill']] },
     { key: 'view', label: 'Camera', values: VIEWS.map((v) => [v.id, v.label]) },
     { key: 'tilt', label: 'Tilt-shift', values: [[0, '0 - Off'], [1, '1 - Estimated'], [2, '2 - Depth map']] },
+    { key: 'undergrowth', label: 'Ground cover', values: onOff },
     { key: 'shadows', label: 'Shadows', values: [[0, '0 - Off'], [1, '1 - Headlights and moon'], [2, '2 - Sharp']] },
     { key: 'pace', label: 'Pace', values: PACES.map((p) => [p, `×${p}`]) },
     { key: 'engine', label: 'Engine volume', slider: true },
@@ -185,7 +193,7 @@ const menu = new Menu({
     { key: 'fps', label: 'Frame rate', values: onOff },
   ],
   onWorld: () => swap(),
-  onLive: (key) => { saveLive(); audio.sync(); if (key === 'tilt') applyTilt(); else if (key === 'view') applyView(); },
+  onLive: (key) => { saveLive(); audio.sync(); if (key === 'tilt') applyTilt(); else if (key === 'undergrowth') applyUndergrowth(); else if (key === 'view') applyView(); },
 });
 // options are remembered as soon as they change
 function saveLive() {

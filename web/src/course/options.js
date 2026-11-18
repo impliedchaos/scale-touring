@@ -28,14 +28,14 @@ export const VIEWS = [
 
 export const DEFAULTS = {
   site: 'rio', day: false, weather: 'clear', car: 'rx7', shadows: 2, uphill: true,  // WORLD
-  view: 'drone', tilt: 2, pace: 1, text: true, fps: false, engine: 0, music: 0, song: '', cycle: true,  // LIVE (engine, music: volume 0..1, 0 = off; song: a file in music/playlist.json, '' = the playlist's order)
+  view: 'drone', tilt: 2, undergrowth: true, pace: 1, text: true, fps: false, engine: 0, music: 0, song: '', cycle: true,  // LIVE (engine, music: volume 0..1, 0 = off; song: a file in music/playlist.json, '' = the playlist's order)
 };
-export const LIVE = ['view', 'tilt', 'pace', 'text', 'fps', 'engine', 'music', 'song', 'cycle'];
+export const LIVE = ['view', 'tilt', 'undergrowth', 'pace', 'text', 'fps', 'engine', 'music', 'song', 'cycle'];
 
 const KEY = 'touring-options';
 const OFF = new Set(['0', 'false', 'off', 'no', 'none']);
 // URL parameter behind each option, for stripping them off the address once the menu has changed a choice
-export const URL_KEYS = ['site', 'day', 'weather', 'car', 'view', 'tiltshift', 'shadows', 'uphill', 'fps', 'engine', 'music', 'song', 'cycle'];
+export const URL_KEYS = ['site', 'day', 'weather', 'car', 'view', 'tiltshift', 'undergrowth', 'shadows', 'uphill', 'fps', 'engine', 'music', 'song', 'cycle'];
 
 const flag = (params, name) => { const v = params.get(name); return v !== null && !OFF.has(v); };
 
@@ -61,6 +61,7 @@ export function loadOptions(params) {
   if (params.has('tiltshift')) o.tilt = flag(params, 'tiltshift') ? Math.min(Math.max(Math.round(+(params.get('tiltshift') || 2)) || 0, 0), 2) : 0;
   if (params.has('shadows')) o.shadows = flag(params, 'shadows') ? Math.min(Math.max(Math.round(+(params.get('shadows') || 2)) || 0, 0), 2) : 0;
   if (VIEWS.some((v) => v.id === params.get('view'))) o.view = params.get('view');
+  if (params.has('undergrowth')) o.undergrowth = flag(params, 'undergrowth');
   if (params.has('uphill')) o.uphill = flag(params, 'uphill');
   if (params.has('fps')) o.fps = flag(params, 'fps');
   if (params.has('engine')) o.engine = volume(params, 'engine');
