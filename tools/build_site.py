@@ -25,7 +25,7 @@ import dem as demlib
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SITES = {
-    "rio": dict(title=["ESTRADA DA GÁVEA", "ROCINHA → AV. PREF. MENDES DE MORAIS · RIO DE JANEIRO"], start_name="the crest", route="data/rio_route.json", dem="assets/rio/dem_gavea", crest=True, crest_extra=520,  # past the crest: through the left-hand hairpin, ending on the short straight after it
+    "rio": dict(centre="double-yellow", title=["ESTRADA DA GÁVEA", "ROCINHA → AV. PREF. MENDES DE MORAIS · RIO DE JANEIRO"], start_name="the crest", route="data/rio_route.json", dem="assets/rio/dem_gavea", crest=True, crest_extra=520,  # past the crest: through the left-hand hairpin, ending on the short straight after it
                 cell=6.0, margin=500.0, dem_smooth=0.0, flat_r=8.0, blend_r=28.0, y_smooth=15.0,
                 forest=dict(count=0, young=0, wideBroadleaf=16000, palms=3500, foliage=dict(hue=0.30, span=0.05),
                             sparse=dict(below=12, palmRoad=15)),  # São Conrado coastal plain (ground under 12 m): no trees, only a line of palms by the road
@@ -34,14 +34,14 @@ SITES = {
                 credits=["Terrain: Instituto Pereira Passos, Prefeitura da Cidade do Rio de Janeiro, "
                          "Modelo Digital de Terreno LiDAR 2019 (CC BY 4.0)",
                          "Road: © OpenStreetMap contributors (ODbL)"]),
-    "hk": dict(title=["PEAK ROAD", "THE PEAK → STUBBS ROAD · HONG KONG"], start_name="the Peak", route="data/hk_route.json", dem="assets/hk/dem_peak", crest=False,
+    "hk": dict(centre="double-white", title=["PEAK ROAD", "THE PEAK → STUBBS ROAD · HONG KONG"], start_name="the Peak", route="data/hk_route.json", dem="assets/hk/dem_peak", crest=False,
                forest=dict(count=0, young=0, wideBroadleaf=14000, foliage=dict(hue=0.29, span=0.05)),
                cell=6.0, margin=500.0, dem_smooth=6.0, flat_r=8.0, blend_r=28.0, y_smooth=15.0,
                ground=dict(green="#2c5428", scrub="#6f7d3e", rock="#8a8173", rockFlat=0.8),
                credits=["Terrain: Civil Engineering and Development Department, HKSAR Government, "
                         "LiDAR 2020 Digital Terrain Model, via CSDI / DATA.GOV.HK",
                         "Road: © OpenStreetMap contributors (ODbL)"]),
-    "bigsur": dict(title=["PACIFIC COAST HIGHWAY", "BIG SUR · BIXBY CREEK BRIDGE · CALIFORNIA"], start_name="the north end", route="data/bigsur_route.json",
+    "bigsur": dict(centre="double-yellow", title=["PACIFIC COAST HIGHWAY", "BIG SUR · BIXBY CREEK BRIDGE · CALIFORNIA"], start_name="the north end", route="data/bigsur_route.json",
                    dem="assets/bigsur/dem_bigsur", crest=False,   # stored north to south: the default (uphill) drive heads north with the sea on the left
                    cell=6.0, margin=500.0, dem_smooth=0.0, flat_r=8.0, blend_r=28.0, y_smooth=15.0,
                    forest=dict(count=120, young=0, roadsideBroadleaf=60, wideBroadleaf=900, wideBias=1.0, foliage=dict(hue=0.24, span=0.05), sparse=dict(below=2.0, palmRoad=0)),
@@ -49,7 +49,7 @@ SITES = {
                    ground=dict(green="#5c6a35", scrub="#7a6f3c", rock="#8a7c66", rockFlat=0.78, sand="#d8c8a0", sandBelow=2.0),
                    credits=["Terrain: U.S. Geological Survey, 3D Elevation Program (3DEP) 1 m DEM, CA_AZ_FEMA_R9_Lidar_2017_D18 (public domain)",
                             "Road: © OpenStreetMap contributors (ODbL)"]),
-    "amalfi": dict(title=["COSTIERA AMALFITANA", "STRADA STATALE 163 · POSITANO → FURORE · ITALY"], start_name="Positano", route="data/amalfi_route.json",
+    "amalfi": dict(centre="white", title=["COSTIERA AMALFITANA", "STRADA STATALE 163 · POSITANO → FURORE · ITALY"], start_name="Positano", route="data/amalfi_route.json",
                    dem="assets/amalfi/dem_amalfi", crest=False,   # stored west to east: the default (uphill) drive heads west with the sea on the left, into Positano
                    cell=6.0, margin=500.0, dem_smooth=2.0, flat_r=8.0, blend_r=28.0, y_smooth=50.0,
                    forest=dict(count=300, young=0, roadsideBroadleaf=250, wideBroadleaf=2500, wideBias=1.0, foliage=dict(hue=0.25, span=0.05), sparse=dict(below=3.0, palmRoad=0)),
@@ -57,7 +57,7 @@ SITES = {
                    ground=dict(green="#586a3a", scrub="#76733f", rock="#a39884", rockFlat=0.75, sand="#d8c8a0", sandBelow=2.0),
                    credits=["Terrain: INGV TINITALY/1.1 10 m DEM (Tarquini et al., 2012), CC BY 4.0",
                             "Road: © OpenStreetMap contributors (ODbL)"]),
-    "monaco": dict(title=["MONACO", "MOYENNE CORNICHE → PORT HERCULE · MONACO"], start_name="Èze", route="data/monaco_route.json",
+    "monaco": dict(centre="white", title=["MONACO", "MOYENNE CORNICHE → PORT HERCULE · MONACO"], start_name="Èze", route="data/monaco_route.json",
                    dem="assets/monaco/dem_monaco", crest=False,
                    cell=6.0, margin=500.0, dem_smooth=2.0, flat_r=8.0, blend_r=28.0, y_smooth=15.0,
                    sea=0.3,
@@ -65,7 +65,7 @@ SITES = {
                    ground=dict(green="#586a3a", scrub="#76733f", rock="#a39884", rockFlat=0.75, sand="#d8c8a0", sandBelow=2.0),
                    credits=["Terrain: IGN RGE ALTI (Licence Ouverte 2.0), 1 m LiDAR terrain model",
                             "Road: © OpenStreetMap contributors (ODbL)"]),
-    "ah": dict(title=["L'ALPE D'HUEZ", "D 211 · BOURG-D'OISANS → L'ALPE D'HUEZ · 21 HAIRPINS · FRANCE"], start_name="L'Alpe d'Huez", route="data/ah_route.json",
+    "ah": dict(centre="white", title=["L'ALPE D'HUEZ", "D 211 · BOURG-D'OISANS → L'ALPE D'HUEZ · 21 HAIRPINS · FRANCE"], start_name="L'Alpe d'Huez", route="data/ah_route.json",
                dem="assets/ah/dem_ah", crest=False,   # stored resort to valley, like the others: the default (uphill) drive climbs the hairpins
                cell=6.0, margin=500.0, dem_smooth=2.0, flat_r=8.0, blend_r=28.0, y_smooth=60.0,
                forest=dict(count=24000, young=4000, roadsideBroadleaf=600, wideBroadleaf=0),
@@ -73,7 +73,7 @@ SITES = {
                            snow=dict(above=1000, band=240, flat=0.5, color="#eef2f7")),   # a winter scene: snow from 1,000 m, the valley floor stays bare
                credits=["Terrain: IGN RGE ALTI® digital terrain model, derived from LiDAR HD (Licence Ouverte 2.0)",
                         "Road: © OpenStreetMap contributors (ODbL)"]),
-    "abq": dict(title=["SANDIA CREST SCENIC BYWAY", "NM 536 · SANDIA PARK → SANDIA CREST · NEW MEXICO"], start_name="Sandia Crest", route="data/abq_route.json",
+    "abq": dict(centre="double-yellow", title=["SANDIA CREST SCENIC BYWAY", "NM 536 · SANDIA PARK → SANDIA CREST · NEW MEXICO"], start_name="Sandia Crest", route="data/abq_route.json",
                 dem="assets/abq/dem_abq", crest=False,   # stored crest to NM 14: the default (uphill) drive climbs to the crest
                 cell=8.0, margin=500.0, dem_smooth=0.0, flat_r=8.0, blend_r=28.0, y_smooth=15.0,   # 8 m cells: the 22 km road's box is 10 x 7 km
                 forest=dict(count=30000, young=4000, roadsideBroadleaf=300, wideBroadleaf=0),
@@ -311,6 +311,8 @@ def main():
         course["forest"] = cfg["forest"]                  # createWorld's tree settings for this place
     if cfg.get("sea") is not None:
         course["sea"] = cfg["sea"]                        # world.js lays a sheet of water at this height
+    if cfg.get("centre"):
+        course["centre"] = cfg["centre"]                  # buildRoad's centre line: yellow (default, Japan) / double-yellow / white / double-white
     if cfg.get("ground"):
         course["ground"] = cfg["ground"]                  # buildTerrain's scrub / rock tints
     json.dump(course, open(os.path.join(out_dir, "course.json"), "w"), separators=(",", ":"))

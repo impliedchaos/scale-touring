@@ -2,8 +2,10 @@
 import * as THREE from 'three';
 import { rng } from './track.js';
 
-function roadTexture(markings = true) {
-  // 7 m wide x 14 m long tile. Solid yellow centre line (no overtaking: it's a mountain pass),
+// `centre` (course.json, per place): 'yellow' a single solid yellow line (Japan, the default) · 'double-yellow' (US, Brazil) ·
+// 'white' a solid white line (Europe) · 'double-white' (Hong Kong)
+function roadTexture(markings = true, centre = 'yellow') {
+  // 7 m wide x 14 m long tile. Solid centre line (no overtaking: it's a mountain pass),
   // white edge lines 0.3 m in from the edge.
   const W = 256, H = 512, c = document.createElement('canvas');
   c.width = W; c.height = H;
@@ -26,8 +28,10 @@ function roadTexture(markings = true) {
   g.fillStyle = '#e8e6dc';
   g.fillRect(0.3 * m, 0, 0.15 * m, H);
   g.fillRect(W - 0.45 * m, 0, 0.15 * m, H);
-  g.fillStyle = '#e0a020';
-  g.fillRect(W / 2 - 0.08 * m, 0, 0.16 * m, H);
+  g.fillStyle = centre.endsWith('white') ? '#e8e6dc' : '#e0a020';
+  if (centre.startsWith('double')) {
+    for (const side of [-1, 1]) g.fillRect(W / 2 + side * 0.13 * m - 0.065 * m, 0, 0.13 * m, H); // two 13 cm lines, a 13 cm gap
+  } else g.fillRect(W / 2 - 0.08 * m, 0, 0.16 * m, H);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = THREE.ClampToEdgeWrapping;
@@ -36,7 +40,7 @@ function roadTexture(markings = true) {
   return tex;
 }
 
-export function buildRoad(path) {
+export function buildRoad(path, { centre = 'yellow' } = {}) {
   const half = path.half, TILE = 14;
   // the course plus its scenery extensions either end (path.ext), as one strip
   const pts = [...[...path.ext.start].reverse(), ...path.P.map((p, i) => ({ p, r: path.R[i] })), ...path.ext.end];
@@ -56,7 +60,7 @@ export function buildRoad(path) {
   geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   geo.setIndex(idx);
   geo.computeVertexNormals();
-  const road = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: roadTexture(), roughness: 0.9 }));
+  const road = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: roadTexture(true, centre), roughness: 0.9 }));
   road.name = 'road';
 
   // start and finish lines

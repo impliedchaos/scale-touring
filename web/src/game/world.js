@@ -37,7 +37,7 @@ export async function createWorld({ site = null, day = false, weather = 'clear',
   const course = await loadCourse(`track/${site || 'harasu'}/`); // no site = Mt. Haruna (Route 33)
   const path = new TrackPath(course);
   const heightAt = makeHeightAt(course);
-  const road = buildRoad(path);
+  const road = buildRoad(path, { centre: course.centre });
   const gutters = gutterFlags(path, course, heightAt);
   scene.add(buildTerrain(course, tunnelPortals(path, course)), road, buildBridges(path, course, heightAt), buildTunnels(path, course), buildGuardrails(path, course), buildGutters(path, gutters),
   buildForest(path, heightAt, { ...forest, ...course.forest, buildings: course.buildings, snow: course.ground?.snow }), buildBuildings(course.buildings, { day: day }));
