@@ -17,7 +17,7 @@ const SHOTS = {
   trackside: { fov: 24 },
 };
 const CHASE_BACK = 8.5, CHASE_UP = 2.7, SPOT_AHEAD = 85, SPOT_SIDE = 7, SPOT_UP = 3, SPOT_DONE = 18;
-const HOOD_BEAM = 0.06, SPOT_TRIES = [85, 60, 110, 45];
+const SPOT_TRIES = [85, 60, 110, 45];
 const UP = new THREE.Vector3(0, 1, 0);
 
 export class CameraRig {
@@ -41,9 +41,8 @@ export class CameraRig {
     this.camera.fov = shot.fov;
     this.camera.updateProjectionMatrix();
     this.drone.lookAhead = shot.lookAhead ?? 1;
-    // From the bonnet the beam cones and headlight pools sit a few metres from the lens and blow out, so drop them there.
+    // From the bonnet the beam cones sit a few metres from the lens and blow out, so drop them there.
     const rig = this.car?.rig, hood = this.view === 'hood';
-    for (const spot of rig?.spots ?? []) spot.userData.power = hood ? HOOD_BEAM : 1;
     if (rig?.beams) { this.beamStrength ??= rig.beams.strength; rig.beams.strength = hood ? 0 : this.beamStrength; }
     this.reset();
     return this.view;

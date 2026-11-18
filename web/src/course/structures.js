@@ -77,7 +77,7 @@ export function buildBridges(path, course, heightAt) {
 }
 
 // SQUASH: the arch is an ellipse this much lower than it is wide (a full semicircle over a 9 m road is ~6 m tall and pokes out of thin hills)
-const TUN = { WALL: 1.5, EXT: 4, CUT: 14, FRAME: 1.1, DEPTH: 1.4, SQUASH: 0.7 };
+const TUN = { WALL: 1.5, EXT: 4, CUT: 14, FORE: 6, FRAME: 1.1, DEPTH: 1.4, SQUASH: 0.7 };
 
 /** Where each tunnel in `course.tunnels` ([[s0, s1], ...] metres of s, the part well inside the hill) opens: one entry per
  *  portal, with the point on the road, the horizontal direction into the hill, the road's rise per metre that way and the arch
@@ -97,8 +97,9 @@ export function tunnelPortals(path, course) {
   return out;
 }
 
-/** Patch a terrain material so it discards the surface inside each portal's arch-shaped volume (CUT metres into the hill). The
- *  terrain is a 6 m heightfield, so where it climbs over the road it can only make a ramp across the opening; this opens it. */
+/** Patch a terrain material so it discards the surface inside each portal's arch-shaped volume (CUT metres into the hill, and FORE
+ *  metres out of it: the ramp starts up to a grid cell before the face, and a triangle there can cut across the opening).
+ *  The terrain is a 6 m heightfield, so where it climbs over the road it can only make a ramp across the opening; this opens it. */
 export function cutPortals(mat, portals) {
   const n = portals.length;
   const A = portals.map(q => new THREE.Vector4(q.p.x, q.p.y, q.p.z, q.R));
@@ -115,7 +116,7 @@ uniform vec4 uPB[${n}];`).replace('#include <clipping_planes_fragment>', `#inclu
 for (int i = 0; i < ${n}; i++) {
   vec2 d = vWP.xz - uPA[i].xz;
   float al = dot(d, uPB[i].xy), u = dot(d, vec2(-uPB[i].y, uPB[i].x));
-  if (al > -0.5 && al < uPB[i].z) {
+  if (al > -${TUN.FORE.toFixed(1)} && al < uPB[i].z) {
     float v = vWP.y - (uPA[i].y + uPB[i].w * al), R = uPA[i].w - 0.05, w = (v - ${TUN.WALL.toFixed(2)}) / ${TUN.SQUASH.toFixed(2)};
     if (v > 0.0 && ((w < 0.0 && abs(u) < R) || u * u + w * w < R * R)) discard;
   }
