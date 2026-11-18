@@ -77,7 +77,7 @@ SITES = {
                 dem="assets/abq/dem_abq", crest=False,   # stored crest to NM 14: the default (uphill) drive climbs to the crest
                 cell=8.0, margin=500.0, dem_smooth=0.0, flat_r=8.0, blend_r=28.0, y_smooth=15.0,   # 8 m cells: the 22 km road's box is 10 x 7 km
                 forest=dict(count=30000, young=4000, roadsideBroadleaf=300, wideBroadleaf=0),
-                ground=dict(green="#56653a", scrub="#8a7b55", rock="#9d9087", rockFlat=0.78,
+                ground=dict(green="#8f7d5c", scrub="#6f6249", rock="#9d9087", rockFlat=0.78,
                             bush="#b89a6c", tuft="#b5a265", brush=0.25),   # dry high-desert scrub, pink-grey Sandia granite
                 credits=["Terrain: U.S. Geological Survey, 3D Elevation Program (3DEP) 1 m DEM, NM_North_Central_FEMA_R6_Lidar_2016_D17 (public domain)",
                          "Road: © OpenStreetMap contributors (ODbL)"]),
