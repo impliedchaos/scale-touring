@@ -19,10 +19,10 @@ export const PLACES = [
 export const PACES = [0.25, 0.5, 1, 2, 4, 8];
 
 export const DEFAULTS = {
-  site: 'rio', day: false, weather: 'clear', car: 'rx7', tilt: 2, shadows: 2, uphill: true,  // WORLD
-  pace: 1, text: true, fps: false, engine: 0, music: 0, song: '', cycle: true,  // LIVE (engine, music: volume 0..1, 0 = off; song: a file in music/playlist.json, '' = the playlist's order)
+  site: 'rio', day: false, weather: 'clear', car: 'rx7', shadows: 2, uphill: true,  // WORLD
+  tilt: 2, pace: 1, text: true, fps: false, engine: 0, music: 0, song: '', cycle: true,  // LIVE (engine, music: volume 0..1, 0 = off; song: a file in music/playlist.json, '' = the playlist's order)
 };
-export const LIVE = ['pace', 'text', 'fps', 'engine', 'music', 'song', 'cycle'];
+export const LIVE = ['tilt', 'pace', 'text', 'fps', 'engine', 'music', 'song', 'cycle'];
 
 const KEY = 'touring-options';
 const OFF = new Set(['0', 'false', 'off', 'no', 'none']);

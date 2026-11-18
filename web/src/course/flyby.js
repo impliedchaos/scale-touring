@@ -30,7 +30,7 @@ const hud = document.getElementById('hud');
 const callout = document.getElementById('callout');
 const still = params.has('still');
 const baseSpeed = +(params.get('speed') || 42); // m/s along the road (~150 km/h): about three minutes top to bottom
-const ZOOM_FOV = 30, LOOK_AHEAD = 0.4;
+const ZOOM_FOV = 30, DEFAULT_FOV = 60, LOOK_AHEAD = 0.4;
 const audio = new FlyAudio({ opt, car: null, carId: null, spec: null, weather: { rain: 0, wet: 0 } }); // lives across world swaps: the music carries on
 const carFocus = new THREE.Vector3(), carCentre = new THREE.Vector3();
 
@@ -72,14 +72,24 @@ async function start() {
     car.rig.castShadows();
     car.rig.setShadow(shadowLevel >= 1);
   }
-  tilt = opt.tilt ? new TiltShift(renderer, scene, camera, { byDepth: opt.tilt === 2 }) : null;
-  // tilt-shift: a long lens from the usual drone path (like real miniature-look photos). With a car it keeps the car dead
-  // centre; without, it looks less far up the road so what it's looking at fits the narrower frame
-  if (tilt) { camera.fov = ZOOM_FOV; camera.updateProjectionMatrix(); }
-  drone = new Drone(path, heightAt, camera, { lookAhead: tilt ? LOOK_AHEAD : 1 });
+  drone = new Drone(path, heightAt, camera);
+  applyTilt();
   audio.rebind({ car, carId, spec: cars[carId], weather });
-  if (params.has('log')) window.__flyby = { audio, swap, opt, car, drone, tilt, camera, path, renderer, scene, moonShadow: world.moonShadow, get s() { return car ? car.s : s; }, set s(v) { if (car) car.s = v; else s = v; } }; // poke at it from tests / devtools
+  if (params.has('log')) window.__flyby = { audio, swap, applyTilt, opt, car, drone, tilt, camera, path, renderer, scene, moonShadow: world.moonShadow, get s() { return car ? car.s : s; }, set s(v) { if (car) car.s = v; else s = v; } }; // poke at it from tests / devtools
   renderer.setAnimationLoop(frame);
+}
+
+/** Tilt-shift is live: the blur pass, lens and look-ahead are all that it touches, so switching it needs no new world.
+ *  A long lens from the usual drone path (like real miniature-look photos). With a car it keeps the car dead centre;
+ *  without, it looks less far up the road so what it's looking at fits the narrower frame. */
+function applyTilt() {
+  if (opt.tilt && tilt) tilt.byDepth = opt.tilt === 2;
+  else if (opt.tilt) tilt = new TiltShift(renderer, scene, camera, { byDepth: opt.tilt === 2 });
+  else { tilt?.dispose(); tilt = null; }
+  camera.fov = tilt ? ZOOM_FOV : DEFAULT_FOV;
+  camera.updateProjectionMatrix();
+  drone.lookAhead = tilt ? LOOK_AHEAD : 1;
+  if (window.__flyby) window.__flyby.tilt = tilt;
 }
 
 /** Rebuild the world from the current options, in place: drop the current one (and free its GPU memory), build the new one.
@@ -170,7 +180,7 @@ const menu = new Menu({
     { key: 'fps', label: 'Frame rate', values: onOff },
   ],
   onWorld: () => swap(),
-  onLive: () => { saveLive(); audio.sync(); },
+  onLive: (key) => { saveLive(); audio.sync(); if (key === 'tilt') applyTilt(); },
 });
 // options are remembered as soon as they change
 function saveLive() {
