@@ -62,6 +62,7 @@ export function buildRoad(path, { centre = 'yellow' } = {}) {
   geo.computeVertexNormals();
   const road = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: roadTexture(true, centre), roughness: 0.9 }));
   road.name = 'road';
+  road.add(buildRoadBody(pts, half));
 
   // start and finish lines
   const lines = new THREE.Group();
@@ -81,6 +82,32 @@ export function buildRoad(path, { centre = 'yellow' } = {}) {
   road.add(lines);
   if (path.sideRoads.length) road.add(buildSideRoads(path.sideRoads));
   return road;
+}
+
+/** Under the surface: a slab ROAD_BODY.thick thick (the road is the top face) whose lower part also juts `flange` out each side, so the
+ *  cross-section is an upside-down T. It closes the gap wherever the ground falls away from the road, and the guardrail posts stand on it. */
+export const ROAD_BODY = { thick: 0.5, flangeTop: 0.2, flange: 0.5 };   // flangeTop: just above the terrain's carved level (0.25 under the road), so they don't z-fight
+
+function buildRoadBody(pts, half) {
+  const { thick, flangeTop, flange } = ROAD_BODY, w = half + flange;
+  // cross-section (right of the centre line, up from the surface), left top edge round to the right top edge
+  const prof = [[-half, 0], [-half, -flangeTop], [-w, -flangeTop], [-w, -thick], [w, -thick], [w, -flangeTop], [half, -flangeTop], [half, 0]];
+  const pos = [], idx = [], n = pts.length;
+  for (let m = 0; m < prof.length - 1; m++) {
+    const base = pos.length / 3;
+    for (let i = 0; i < n; i++) {
+      const { p, r } = pts[i];
+      for (const [u, v] of [prof[m], prof[m + 1]]) pos.push(p.x + r.x * u, p.y + v, p.z + r.z * u);
+      if (i < n - 1) { const q = base + 2 * i; idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3); }
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x8a8880, roughness: 0.95, side: THREE.DoubleSide }));
+  mesh.name = 'road-body';
+  return mesh;
 }
 
 /** The other roads (OSM), as one unmarked strip mesh. Each tucks under the course where they meet (polygon offset),
@@ -125,12 +152,12 @@ export function buildGuardrails(path, course) {
   const group = new THREE.Group();
   group.name = 'guardrails';
   const railMat = new THREE.MeshStandardMaterial({ color: 0xdedcd4, roughness: 0.5, metalness: 0.3, side: THREE.DoubleSide });
-  const postGeo = new THREE.BoxGeometry(0.12, 0.8, 0.12);
+  const postGeo = new THREE.BoxGeometry(0.12, 0.8 + ROAD_BODY.thick, 0.12);   // from the bottom of the road slab (it stands on the flange) up to the top of the rail
   const reflGeo = new THREE.BoxGeometry(0.16, 0.12, 0.04);
   const postMat = new THREE.MeshStandardMaterial({ color: 0xb8b6ae, roughness: 0.6 });
   const reflMat = new THREE.MeshBasicMaterial({ color: 0xff9a1f });
   const posts = [], refls = [];
-  const off = path.half + 0.7;
+  const off = path.half + ROAD_BODY.flange - 0.15;   // on the flange: the posts are 0.12 wide
   const tmp = new THREE.Vector3();
 
   // open the rail where a side road joins (just the mesh: the gameplay rail flags stay as they are)
@@ -168,7 +195,7 @@ export function buildGuardrails(path, course) {
   }
   const m4 = new THREE.Matrix4();
   const postMesh = new THREE.InstancedMesh(postGeo, postMat, posts.length);
-  posts.forEach((p, k) => postMesh.setMatrixAt(k, m4.makeTranslation(p.x, p.y + 0.4, p.z)));
+  posts.forEach((p, k) => postMesh.setMatrixAt(k, m4.makeTranslation(p.x, p.y + 0.4 - ROAD_BODY.thick / 2, p.z)));
   const reflMesh = new THREE.InstancedMesh(reflGeo, reflMat, refls.length);
   const q = new THREE.Quaternion(), one = new THREE.Vector3(1, 1, 1);
   refls.forEach(([p, inward], k) => {

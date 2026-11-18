@@ -9,7 +9,7 @@ export function buildBridges(path, course, heightAt) {
   const group = new THREE.Group(); group.name = 'bridges';
   const spans = course.bridges || [];
   if (!spans.length) return group;
-  const half = path.half, W = half * 2 + 1.0, SLAB = 1.3, RIB = 1.6, COL = 1.4;
+  const half = path.half, W = half * 2 + 1.1, SLAB = 1.3, RIB = 1.6, COL = 1.4;
   const parts = [], o = {}, up = new THREE.Vector3(0, 1, 0);
   const paint = (g, hex) => { // flat colour with a little variation so the faces read in the tilt-shift
     const c = new THREE.Color(hex), n = g.attributes.position.count, a = new Float32Array(n * 3);
