@@ -43,6 +43,7 @@ async function start() {
   world = await createWorld({
     site: opt.site || null,               // another place (tools/build_site.py), same fly-by
     day: opt.day, weather: opt.weather,
+    undergrowth: false,                  // chunks popping in and out is ugly from the drone, and it only grows beside the road
     forest: { wideBroadleaf: 10000 },    // and high enough to see the broadleaf woods spread out like the conifers
     shadows: opt.shadows > 0,
   });
