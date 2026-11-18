@@ -5,9 +5,9 @@
     python3 tools/build_buildings.py --site rio --flat   # another place (tools/build_site.py); --flat: no hipped roofs
 
 Inputs : data/raw/buildings_osm.json (Overpass: every building way inside the terrain box)
-         web/public/track/course.json + terrain.bin (from tools/build_track.py: frame, road, ground heights)
-         web/public/track/roads.json, if there (tools/build_roads.py: run it first)
-Output : web/public/track/buildings.json
+         web/public/track/harasu/course.json + terrain.bin (from tools/build_track.py: frame, road, ground heights)
+         web/public/track/harasu/roads.json, if there (tools/build_roads.py: run it first)
+Output : web/public/track/harasu/buildings.json
          {credits, floor, buildings: [{p: [x, z, x, z, ...] footprint CCW, b: base y, t: wall top y, f: floors,
                                        w: wall colour, r: roof colour, h: hipped-roof rise (0 = flat)}]}
 
@@ -23,7 +23,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # --site <name> works on another place (tools/build_site.py): web/public/track/<name>/ and data/raw/<name>_buildings_osm.json
 SITE = sys.argv[sys.argv.index("--site") + 1] if "--site" in sys.argv else None
 RAW = os.path.join(ROOT, "data", "raw", (SITE + "_" if SITE else "") + "buildings_osm.json")
-TRACK = os.path.join(ROOT, "web", "public", "track", *([SITE] if SITE else []))
+TRACK = os.path.join(ROOT, "web", "public", "track", SITE or "harasu")  # no --site = Route 33 / Mt. Haruna, which lives in track/harasu/
 UA = {"User-Agent": "ghost-of-mount-akina/0.1 (hobby game project)"}
 
 FLOOR = 3.1             # metres per storey

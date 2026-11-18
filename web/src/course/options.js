@@ -6,7 +6,7 @@ import { WEATHER } from '../game/weather.js';
 
 // Per-place titles live in course.json (tools/build_site.py); this is only the list to choose from.
 export const PLACES = [
-  { id: '', label: 'Mt. Haruna, Japan' },
+  { id: 'harasu', label: 'Mt. Haruna, Japan' },
   { id: 'rio', label: 'Rio de Janeiro' },
   { id: 'hk', label: 'Hong Kong' },
   { id: 'bigsur', label: 'Big Sur, California' },
@@ -44,7 +44,7 @@ export function loadOptions(params) {
   const o = { ...DEFAULTS };
   for (const k of Object.keys(DEFAULTS)) if (typeof saved[k] === typeof DEFAULTS[k]) o[k] = saved[k];
 
-  if (params.has('site')) o.site = params.get('site') || '';
+  if (params.has('site')) o.site = params.get('site') || 'harasu';
   if (params.has('day')) o.day = flag(params, 'day');
   if (WEATHER[params.get('weather')]) o.weather = params.get('weather');
   if (params.has('car')) o.car = flag(params, 'car') ? params.get('car') || 'rx7' : '';
@@ -57,7 +57,7 @@ export function loadOptions(params) {
   if (params.has('cycle')) o.cycle = flag(params, 'cycle');
   if (params.has('song')) o.song = params.get('song') || '';
 
-  if (!PLACES.some((p) => p.id === o.site) && !params.has('site')) o.site = '';
+  if (!PLACES.some((p) => p.id === o.site) && !params.has('site')) o.site = DEFAULTS.site;
   if (!PACES.includes(o.pace)) o.pace = 1;
   return o;
 }

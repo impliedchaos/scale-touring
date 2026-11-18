@@ -29,7 +29,7 @@ export async function createWorld({ site = null, day = false, weather = 'clear',
   };
   addEventListener('resize', onResize);
 
-  const course = await loadCourse(site ? `track/${site}/` : 'track/');
+  const course = await loadCourse(`track/${site || 'harasu'}/`); // no site = Mt. Haruna (Route 33)
   const path = new TrackPath(course);
   const heightAt = makeHeightAt(course);
   const road = buildRoad(path);

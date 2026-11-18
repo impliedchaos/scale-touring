@@ -1,10 +1,10 @@
 // Course loading and geometry: the road, guardrails, terrain, forest and buildings.
-// Data comes from tools/build_track.py (see web/public/track/course.json).
+// Data comes from tools/build_track.py (see web/public/track/harasu/course.json).
 // Frame: metres, x east, z south, y elevation. Driving "right" = forward × up.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
-export async function loadCourse(base = 'track/') {
+export async function loadCourse(base) {
   const course = await (await fetch(base + 'course.json')).json();
   const buf = await (await fetch(base + course.terrain.file)).arrayBuffer();
   course.heights = new Float32Array(buf);

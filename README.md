@@ -39,7 +39,7 @@ The URL overrides the saved options (so test links stay exact). Flags are on whe
 
 | Param | Effect |
 |-------|--------|
-| `site=<name>` | which place (a folder in `web/public/track/`); default Rio; `site=` (empty) = Route 33. The menu's list is `PLACES` in `course/options.js` |
+| `site=<name>` | which place (a folder in `web/public/track/`); default Rio; `site=harasu` (or empty) = Route 33, Mt. Haruna. The menu's list is `PLACES` in `course/options.js` |
 | `car=<id>` / `car=none` | the car to chase (default `rx7`; any id in `cars.json`); `none` = the drone just flies the road. Each car's tuning is in `course/drivers.js` |
 | `tiltshift=0\|1\|2` | miniature look: off / 1 estimated (blur by screen height) / 2 depth map (default): a 30° lens, blur away from the car, which it keeps centred |
 | `uphill=0` | start at the top and descend (default is uphill) |

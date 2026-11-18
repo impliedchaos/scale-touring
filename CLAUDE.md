@@ -54,7 +54,7 @@ the page. A new option = a default in `DEFAULTS`, a parse line in `loadOptions`,
 
 **Look.** Synthwave palette and the thin wide-tracked type are CSS variables at the top of `web/index.html`; the night sky is indigo in `world.js`.
 
-**Sites.** `createWorld({ site })` in `game/world.js` loads `track/<site>/` (none = Japan's `track/`). A site's `course.json`
+**Sites.** `createWorld({ site })` in `game/world.js` loads `track/<site>/` (none = `track/harasu/`, Route 33 in Japan). A site's `course.json`
 may carry `title` / `startName` (fly-by title card and HUD), `forest` (overrides `buildForest` options: tree counts,
 `wideBroadleaf`, `palms`, `foliage`), `ground` (scrub / rock tints read by `buildTerrain`) and `origin_lat` (the latitude the
 metre scale is taken at, which `build_roads.py` and `build_buildings.py` use for `--site`; Japan's comes from `route33.json`).

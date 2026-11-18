@@ -3,7 +3,7 @@
 
 For every road point it samples the terrain at 7 offsets across the road's width and reports any run of points where the ground is
 more than --tol metres above the road surface (default 0.1), as `from s - to s (worst poke)`. Tunnel spans (`tunnels` in course.json, plus 8 m at each portal) are skipped. Exits 1 if anything pokes, so it can
-gate a build. With no site argument it checks every folder under web/public/track/ that has a course.json (Route 33 included).
+gate a build. With no site argument it checks every folder under web/public/track/ that has a course.json.
 
     python3 -I tools/check_terrain.py [site ...] [--tol 0.1]
 
@@ -46,8 +46,6 @@ def main():
     a = ap.parse_args()
     sites = a.sites or sorted(d for d in os.listdir(TRACK) if os.path.exists(os.path.join(TRACK, d, "course.json")))
     folders = {s: os.path.join(TRACK, s) for s in sites}
-    if not a.sites and os.path.exists(os.path.join(TRACK, "course.json")):
-        folders = {"route33": TRACK, **folders}
     failed = False
     for s, folder in folders.items():
         runs, worst = check(folder, a.tol)

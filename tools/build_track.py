@@ -3,8 +3,8 @@
     python3 tools/build_track.py
 
 Inputs : data/route33.json, data/heightmap.npy/.json   (from tools/build_route.py)
-Outputs: web/public/track/course.json   centreline, guardrail sides, metadata
-         web/public/track/terrain.bin   Float32 heights, row-major [nz][nx]
+Outputs: web/public/track/harasu/course.json   centreline, guardrail sides, metadata
+         web/public/track/harasu/terrain.bin   Float32 heights, row-major [nz][nx]
 
 Frame: metres, x = east, z = south, y = real elevation above sea level.
        x/z origin is the start line (the summit of the pass).
@@ -15,7 +15,7 @@ from scipy.ndimage import gaussian_filter1d, map_coordinates
 from scipy.spatial import cKDTree
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, "web", "public", "track")
+OUT = os.path.join(ROOT, "web", "public", "track", "harasu")
 
 # --- course choice (distances along chain 0 reversed, i.e. lake -> Shibukawa) ---
 SUMMIT_SEARCH = (1500, 2300)   # start line = highest point in this window

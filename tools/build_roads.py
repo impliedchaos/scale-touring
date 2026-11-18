@@ -6,8 +6,8 @@ Route 33 beyond our course.
     python3 tools/build_roads.py --site rio --paths --fetch   # also footpaths, steps, pedestrian streets and cycleways
 
 Inputs : data/raw/roads_osm.json (Overpass: every drivable highway way inside the terrain box)
-         web/public/track/course.json + terrain.bin (from tools/build_track.py: frame, road, ground heights)
-Output : web/public/track/roads.json
+         web/public/track/harasu/course.json + terrain.bin (from tools/build_track.py: frame, road, ground heights)
+Output : web/public/track/harasu/roads.json
          {credits, roads: [{w: width m, k: 0 paved / 1 track / 2 footpath / 3 steps, p: [x, y, z, ...] centreline every 2 m}]}
 With --paths the narrow ways (k 2 and 3: Rocinha's alleys and stairs) are drawn too; they don't push buildings aside.
 
@@ -23,7 +23,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # --site <name> works on another place (tools/build_site.py): web/public/track/<name>/ and data/raw/<name>_roads_osm.json
 SITE = sys.argv[sys.argv.index("--site") + 1] if "--site" in sys.argv else None
 RAW = os.path.join(ROOT, "data", "raw", (SITE + "_" if SITE else "") + "roads_osm.json")
-TRACK = os.path.join(ROOT, "web", "public", "track", *([SITE] if SITE else []))
+TRACK = os.path.join(ROOT, "web", "public", "track", SITE or "harasu")  # no --site = Route 33 / Mt. Haruna, which lives in track/harasu/
 UA = {"User-Agent": "ghost-of-mount-akina/0.1 (hobby game project)"}
 
 STEP = 2.0
