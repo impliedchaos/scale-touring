@@ -16,7 +16,7 @@ the latitude the metre scale is taken at, which build_roads/build_buildings use 
 """
 import argparse, json, math, os, sys
 import numpy as np
-from scipy.ndimage import binary_erosion, gaussian_filter, gaussian_filter1d, map_coordinates
+from scipy.ndimage import binary_dilation, binary_erosion, gaussian_filter, gaussian_filter1d, map_coordinates
 from scipy.spatial import cKDTree
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -78,6 +78,56 @@ ROAD_HALF = 3.5                # same two-lane road as Japan
 RUNOFF = 150                   # metres of road kept past the finish line
 RAIL_DROP = 1.5
 MIN_RAIL_GAP = 30.0
+
+
+def push_under_road(terrain, x, y, z, tx, tz, gx0, gz0, cell, keep, skip, clear=0.15, rounds=30):
+    """Lower terrain nodes until no point across the road's width has ground within `clear` m of the road surface; returns how far
+    each node went down. The hairpin cap leaves the upper leg of a stacked hairpin (one passing over 6 m above another, a cell or
+    so away: a retaining wall) alone, and the triangle from its nodes down to the lower leg's can still slope through the lower road.
+    Checked on the mesh's own triangles (buildTerrain's alternating diagonal) and bilinearly (tools/check_terrain.py), and only the
+    nodes standing above the road are lowered, in proportion to their weight. `keep`: nodes never lowered (a tunnel's roof);
+    `skip`: road points not checked (tunnels and their portals)."""
+    nz, nx = terrain.shape
+    before = terrain.copy()
+    n = np.hypot(tx, tz)
+    rx, rz = -tz / n, tx / n
+    lats = np.linspace(-ROAD_HALF, ROAD_HALF, 7)
+    sx = (x[:, None] + rx[:, None] * lats).ravel()
+    sz = (z[:, None] + rz[:, None] * lats).ravel()
+    sy = np.repeat(y, len(lats))
+    ok = ~np.repeat(skip, len(lats))
+    u, v = (sx - gx0) / cell, (sz - gz0) / cell
+    i = np.clip(np.floor(u).astype(int), 0, nx - 2); j = np.clip(np.floor(v).astype(int), 0, nz - 2)
+    fu, fv = u - i, v - j
+    # weights of the cell's corners (i, j), (i+1, j), (i, j+1), (i+1, j+1), as rendered and as checked
+    odd = ((i + j) & 1) == 1
+    up = fu >= fv
+    lo = fu + fv <= 1
+    tri = np.stack([
+        np.where(odd, np.where(lo, 1 - fu - fv, 0), np.where(up, 1 - fu, 1 - fv)),
+        np.where(odd, np.where(lo, fu, 1 - fv), np.where(up, fu - fv, 0)),
+        np.where(odd, np.where(lo, fv, 1 - fu), np.where(up, 0, fv - fu)),
+        np.where(odd, np.where(lo, 0, fu + fv - 1), np.where(up, fv, fu)),
+    ], 1)
+    bil = np.stack([(1 - fu) * (1 - fv), fu * (1 - fv), (1 - fu) * fv, fu * fv], 1)
+    ci = np.stack([i, i + 1, i, i + 1], 1); cj = np.stack([j, j, j + 1, j + 1], 1)
+    target = sy - clear
+    for _ in range(rounds):
+        h = terrain[cj, ci]
+        moved = False
+        for w in (tri, bil):
+            excess = (h * w).sum(1) - target
+            for k in np.flatnonzero(ok & (excess > 1e-4)):
+                high = (h[k] > target[k]) & ~keep[cj[k], ci[k]] & (w[k] > 0)
+                if not high.any():
+                    continue
+                drop = np.minimum(excess[k] / w[k][high].sum(), h[k][high] - target[k])
+                terrain[cj[k][high], ci[k][high]] -= drop.astype(terrain.dtype)
+                h = terrain[cj, ci]
+                moved = True
+        if not moved:
+            break
+    return before - terrain
 
 
 def main():
@@ -195,6 +245,9 @@ def main():
             lv = y[js]
             lv = lv[lv >= y[idx[r_, c_]] - 6.0]          # only legs within 6 m in height (hairpin legs); a far lower road is just a valley below
             terrain[r_, c_] = min(terrain[r_, c_], lv.min() - 0.25)
+    pushed = push_under_road(terrain, x, y, z, tx, tz, gx0, gz0, CELL, keep=roof, skip=binary_dilation(tun_in, iterations=4))
+    if pushed.any():
+        print(f"stacked hairpins: lowered {np.count_nonzero(pushed)} terrain nodes by up to {pushed.max():.2f} m")
 
     # ---- guardrails on the valley side ----
     nxr, nzr = -tz / np.hypot(tx, tz), tx / np.hypot(tx, tz)
