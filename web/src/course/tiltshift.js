@@ -108,6 +108,9 @@ export class TiltShift {
     this.down.uniforms.dir.value.set(0, 1 / size.y);
   }
 
+  /** The next render jumps to its focus and strength instead of easing there (after a camera cut). */
+  reset() { this.first = true; }
+
   /** Draw the frame: sharp around world point `focus`, effect at `strength` 0..1. */
   render(focus, strength, dt) {
     const v = this._v.copy(focus).project(this.camera);

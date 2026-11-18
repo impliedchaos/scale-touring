@@ -33,9 +33,10 @@ and the `?site=` links work as they do locally.
 
 ## The fly-by
 It's the default page. **Esc** (or the ☰ button, or pad START) opens the options menu: place, time of day, weather, car,
-starting direction, tilt-shift, shadows, pace, text overlay, frame rate, and credits. Pace, engine and music volume, text and frame rate apply live; the
+starting direction, camera, tilt-shift, shadows, pace, text overlay, frame rate, and credits. Camera, pace, engine and music volume, text and frame rate apply live; the
 rest rebuild the scene (no page reload: the old scene and its GPU memory are freed and the new place, car and weather are built, and the music carries on). *Song* picks a track from `music/playlist.json`. Choices are remembered
-in `localStorage`. Keys: **Space** pause, **[ ]** pace, **H** hide text, **R** restart (pad: A, L1/R1, Y).
+in `localStorage`. Keys: **Space** next camera, **Esc** pause (the menu being open freezes everything), **[ ]** pace, **H** hide text, **R** restart (pad: A next camera, L1/R1, Y).
+Cameras (`course/cameras.js`): *drone* (long lens, car centred), *wide drone*, *chase*, *hood* and *trackside* (a camera beside the road that pans past, then cuts ahead); the car views need a car.
 
 The URL overrides the saved options (so test links stay exact). Flags are on when present and not `0`/`false`/`off`/`no`/`none`.
 
@@ -43,7 +44,8 @@ The URL overrides the saved options (so test links stay exact). Flags are on whe
 |-------|--------|
 | `site=<name>` | which place (a folder in `web/public/track/`); default Rio; `site=harasu` (or empty) = Route 33, Mt. Haruna. The menu's list is `PLACES` in `course/options.js` |
 | `car=<id>` / `car=none` | the car to chase (default `rx7`; any id in `cars.json`); `none` = the drone just flies the road. Each car's tuning is in `course/drivers.js` |
-| `tiltshift=0\|1\|2` | miniature look: off / 1 estimated (blur by screen height) / 2 depth map (default): a 30° lens, blur away from the car, which it keeps centred |
+| `view=drone\|wide\|chase\|hood\|trackside` | camera (default `drone`); `Space` cycles |
+| `tiltshift=0\|1\|2` | the blur only, independent of the camera: off / 1 estimated (by screen height) / 2 depth map (default). It fades out on its own for low views |
 | `uphill=0` | start at the top and descend (default is uphill) |
 | `engine=<0..1>`, `music=<0..1>` | volume (both off by default; a bare `engine` or `music` = full, `0` = off; the menu has a slider for each) |
 | `cycle=0` | auto-cycle is on by default: after a full up-and-down run the next place loads (the menu's list order, wrapping). `cycle=0` stays put; `?s=` links never cycle |

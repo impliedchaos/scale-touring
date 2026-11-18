@@ -17,17 +17,25 @@ export const PLACES = [
   { id: 'ah', label: "L'Alpe d'Huez, France" },
 ];
 export const PACES = [0.25, 0.5, 1, 2, 4, 8];
+// Camera views (Space cycles them; the shots are in course/cameras.js). `car`: needs a car to follow.
+export const VIEWS = [
+  { id: 'drone', label: 'Drone' },
+  { id: 'wide', label: 'Wide drone' },
+  { id: 'chase', label: 'Chase', car: true },
+  { id: 'hood', label: 'Hood', car: true },
+  { id: 'trackside', label: 'Trackside', car: true },
+];
 
 export const DEFAULTS = {
   site: 'rio', day: false, weather: 'clear', car: 'rx7', shadows: 2, uphill: true,  // WORLD
-  tilt: 2, pace: 1, text: true, fps: false, engine: 0, music: 0, song: '', cycle: true,  // LIVE (engine, music: volume 0..1, 0 = off; song: a file in music/playlist.json, '' = the playlist's order)
+  view: 'drone', tilt: 2, pace: 1, text: true, fps: false, engine: 0, music: 0, song: '', cycle: true,  // LIVE (engine, music: volume 0..1, 0 = off; song: a file in music/playlist.json, '' = the playlist's order)
 };
-export const LIVE = ['tilt', 'pace', 'text', 'fps', 'engine', 'music', 'song', 'cycle'];
+export const LIVE = ['view', 'tilt', 'pace', 'text', 'fps', 'engine', 'music', 'song', 'cycle'];
 
 const KEY = 'touring-options';
 const OFF = new Set(['0', 'false', 'off', 'no', 'none']);
 // URL parameter behind each option, for stripping them off the address once the menu has changed a choice
-export const URL_KEYS = ['site', 'day', 'weather', 'car', 'tiltshift', 'shadows', 'uphill', 'fps', 'engine', 'music', 'song', 'cycle'];
+export const URL_KEYS = ['site', 'day', 'weather', 'car', 'view', 'tiltshift', 'shadows', 'uphill', 'fps', 'engine', 'music', 'song', 'cycle'];
 
 const flag = (params, name) => { const v = params.get(name); return v !== null && !OFF.has(v); };
 
@@ -52,6 +60,7 @@ export function loadOptions(params) {
   if (params.has('car')) o.car = flag(params, 'car') ? params.get('car') || 'rx7' : '';
   if (params.has('tiltshift')) o.tilt = flag(params, 'tiltshift') ? Math.min(Math.max(Math.round(+(params.get('tiltshift') || 2)) || 0, 0), 2) : 0;
   if (params.has('shadows')) o.shadows = flag(params, 'shadows') ? Math.min(Math.max(Math.round(+(params.get('shadows') || 2)) || 0, 0), 2) : 0;
+  if (VIEWS.some((v) => v.id === params.get('view'))) o.view = params.get('view');
   if (params.has('uphill')) o.uphill = flag(params, 'uphill');
   if (params.has('fps')) o.fps = flag(params, 'fps');
   if (params.has('engine')) o.engine = volume(params, 'engine');
@@ -61,6 +70,7 @@ export function loadOptions(params) {
 
   if (!PLACES.some((p) => p.id === o.site) && !params.has('site')) o.site = DEFAULTS.site;
   if (!PACES.includes(o.pace)) o.pace = 1;
+  if (!VIEWS.some((v) => v.id === o.view)) o.view = DEFAULTS.view;
   return o;
 }
 

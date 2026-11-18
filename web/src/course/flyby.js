@@ -1,23 +1,24 @@
 // The fly-by (the default page): a drone flies over the course, a car drifts down the road and back up.
-// Esc opens the options menu. Other keys: Space pause · [ ] pace · H hide the text · R restart.  Pad: START menu · A pause · L1/R1 pace · Y text.
+// Esc opens the options menu, which pauses everything. Other keys: Space camera view · [ ] pace · H hide the text · R restart.  Pad: START menu · A camera · L1/R1 pace · Y text.
 // Options (course/options.js) come from the menu (remembered), and the URL overrides them for tests and screenshots:
 //      ?site=rio|hk|bigsur another place (tools/build_site.py) · ?day · ?weather=clear|wet|rain|fog|wetfog · ?uphill (start at the bottom)
-//      ?car=<id>|none the car to chase (default rx7; none = the drone just flies the road) · ?tiltshift=0|1|2 miniature look off · blurred by screen height (estimated) · by scene depth (bare = 2)
+//      ?car=<id>|none the car to chase (default rx7; none = the drone just flies the road) · ?view=drone|wide|chase|hood|trackside the camera · ?tiltshift=0|1|2 the miniature blur off · blurred by screen height (estimated) · by scene depth (bare = 2)
 //      ?shadows=0|1|2 off · headlights and the moon's, coarse · plus the moon's sharp near the camera (bare ?shadows = 2)
 //      ?fps frame-rate counter · ?engine=<0..1> ?music=<0..1> volume (bare = full) · ?song=<file in music/playlist.json>
 // Test-only:  ?s=<metres> start position · ?speed=<m/s> drone speed with no car · ?still freezes (for screenshots)
 //      ?menu opens the options menu
-//      ?log exposes window.__flyby (car, drone, tilt, camera, path, renderer, scene, s)
+//      ?log exposes window.__flyby (car, cameras, tilt, camera, path, renderer, scene, s)
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { createWorld } from '../game/world.js';
 import { Gamepads } from '../game/gamepad.js';
 import { WEATHER } from '../game/weather.js';
-import { BootlegCar, Drone, droneLook } from './showcase.js';
+import { BootlegCar, droneLook } from './showcase.js';
+import { CameraRig } from './cameras.js';
 import { fpsCounter } from '../game/fps.js';
 import { TiltShift } from './tiltshift.js';
 import { DRIVERS } from './drivers.js';
-import { loadOptions, saveOptions, PLACES, PACES, LIVE, URL_KEYS } from './options.js';
+import { loadOptions, saveOptions, PLACES, PACES, VIEWS, LIVE, URL_KEYS } from './options.js';
 import { Menu } from './menu.js';
 import { FlyAudio } from './audio.js';
 
@@ -30,20 +31,18 @@ const hud = document.getElementById('hud');
 const callout = document.getElementById('callout');
 const still = params.has('still');
 const baseSpeed = +(params.get('speed') || 42); // m/s along the road (~150 km/h): about three minutes top to bottom
-const ZOOM_FOV = 30, DEFAULT_FOV = 60, LOOK_AHEAD = 0.4;
 const audio = new FlyAudio({ opt, car: null, carId: null, spec: null, weather: { rain: 0, wet: 0 } }); // lives across world swaps: the music carries on
-const carFocus = new THREE.Vector3(), carCentre = new THREE.Vector3();
+const roadAt = {};
 
 // Everything below `start()` builds is per world, and is thrown away and rebuilt when a WORLD option is applied (`swap`), with no page reload.
-let world, renderer, scene, camera, path, heightAt, day, weather, course, title, from, shadowLevel, uphill, dir, startS, s, carId, car, tilt, drone;
+let world, renderer, scene, camera, path, heightAt, day, weather, course, title, from, shadowLevel, uphill, dir, startS, s, carId, car, tilt, cameras;
 let legs = 0, lastDir = 1; // auto-cycle: one leg is a pass from one end to the other; two make a full run
-let paused = false, titleT = 0, swapping = false, queued = false, applied = null; // applied: the options the current world was built from
+let titleT = 0, swapping = false, queued = false, applied = null; // applied: the options the current world was built from
 
 async function start() {
   world = await createWorld({
     site: opt.site || null,               // another place (tools/build_site.py), same fly-by
     day: opt.day, weather: opt.weather,
-    undergrowth: false,                  // the drone's too high for ground shrubs to matter
     forest: { wideBroadleaf: 10000 },    // and high enough to see the broadleaf woods spread out like the conifers
     shadows: opt.shadows > 0,
   });
@@ -57,7 +56,7 @@ async function start() {
   dir = uphill ? -1 : 1;
   startS = params.has('s') ? +params.get('s') : uphill ? Math.min(path.finish + 150, path.length) : 0;
   s = startS;
-  paused = false; titleT = 0;
+  titleT = 0;
 
   // the car to chase (the drone follows it instead of flying at `baseSpeed`)
   applied = { ...opt };
@@ -72,23 +71,26 @@ async function start() {
     car.rig.castShadows();
     car.rig.setShadow(shadowLevel >= 1);
   }
-  drone = new Drone(path, heightAt, camera);
+  cameras = new CameraRig({ camera, path, heightAt, car });
+  applyView();
   applyTilt();
   audio.rebind({ car, carId, spec: cars[carId], weather });
-  if (params.has('log')) window.__flyby = { audio, swap, applyTilt, opt, car, drone, tilt, camera, path, renderer, scene, moonShadow: world.moonShadow, get s() { return car ? car.s : s; }, set s(v) { if (car) car.s = v; else s = v; } }; // poke at it from tests / devtools
+  if (params.has('log')) window.__flyby = { audio, swap, applyTilt, applyView, cameras, opt, car, tilt, camera, path, renderer, scene, moonShadow: world.moonShadow, get s() { return car ? car.s : s; }, set s(v) { if (car) car.s = v; else s = v; } }; // poke at it from tests / devtools
   renderer.setAnimationLoop(frame);
 }
 
-/** Tilt-shift is live: the blur pass, lens and look-ahead are all that it touches, so switching it needs no new world.
- *  A long lens from the usual drone path (like real miniature-look photos). With a car it keeps the car dead centre;
- *  without, it looks less far up the road so what it's looking at fits the narrower frame. */
+/** The camera view in opt.view (a view that needs a car falls back to the drone without one: the option follows). */
+function applyView() {
+  const id = cameras.set(opt.view);
+  if (id !== opt.view) { opt.view = id; menu.render(); }
+  tilt?.reset();
+}
+
+/** Tilt-shift is live and is only the blur: the blur pass and its depth mode, nothing about the camera. */
 function applyTilt() {
   if (opt.tilt && tilt) tilt.byDepth = opt.tilt === 2;
   else if (opt.tilt) tilt = new TiltShift(renderer, scene, camera, { byDepth: opt.tilt === 2 });
   else { tilt?.dispose(); tilt = null; }
-  camera.fov = tilt ? ZOOM_FOV : DEFAULT_FOV;
-  camera.updateProjectionMatrix();
-  drone.lookAhead = tilt ? LOOK_AHEAD : 1;
   if (window.__flyby) window.__flyby.tilt = tilt;
 }
 
@@ -133,8 +135,8 @@ function drawText(dt) {
   if (!opt.text) return;
   const toGo = Math.max(path.finish - s, 0);
   hud.innerHTML = `${fmtKm(Math.min(s, path.finish))} from ${from} · ${fmtKm(toGo)} to the finish · `
-    + `road ${drone.road.pos ? drone.road.pos.y.toFixed(0) : '–'} m · camera ${(drone.cam.y - heightAt(drone.cam.x, drone.cam.z)).toFixed(0)} m up<br>`
-    + `<b>Esc</b> options · <b>Space</b> ${paused ? 'resume' : 'pause'} · <b>[ ]</b> `
+    + `road ${path.sample(Math.min(Math.max(s, 0), path.length), 0, roadAt).pos.y.toFixed(0)} m · camera ${(camera.position.y - heightAt(camera.position.x, camera.position.z)).toFixed(0)} m up<br>`
+    + `<b>Esc</b> options (pauses) · <b>Space</b> camera: ${VIEWS.find((v) => v.id === opt.view).label} · <b>[ ]</b> `
     + (car ? `pace ×${opt.pace} · ${(car.speed * 3.6).toFixed(0)} km/h` : `speed ${(baseSpeed * opt.pace * 3.6).toFixed(0)} km/h`);
 }
 
@@ -149,12 +151,12 @@ function cycleNext() {
 }
 const restart = () => {
   s = startS; titleT = 0;
-  drone.reset();
+  cameras.reset();
   car?.restart(uphill && !params.has('s') ? path.finish : startS, dir);
 };
 const stepPace = (d) => { opt.pace = PACES[Math.min(Math.max(PACES.indexOf(opt.pace) + d, 0), PACES.length - 1)]; menu.render(); saveLive(); };
 const act = {
-  pause: () => { paused = !paused; },
+  view: () => { opt.view = cameras.next(); applyView(); menu.render(); saveLive(); },
   faster: () => stepPace(+1),
   slower: () => stepPace(-1),
   text: () => { opt.text = !opt.text; saveLive(); },
@@ -169,6 +171,7 @@ const menu = new Menu({
     { key: 'weather', label: 'Weather', values: Object.entries(WEATHER).map(([k, w]) => [k, w.label ? w.label[0] + w.label.slice(1).toLowerCase() : 'Clear']) },
     { key: 'car', label: 'Car', values: [['', 'None (drone only)'], ...Object.values(cars).map((c) => [c.id, c.name])] },
     { key: 'uphill', label: 'Starting direction', values: [[false, 'Downhill'], [true, 'Uphill']] },
+    { key: 'view', label: 'Camera', values: VIEWS.map((v) => [v.id, v.label]) },
     { key: 'tilt', label: 'Tilt-shift', values: [[0, '0 - Off'], [1, '1 - Estimated'], [2, '2 - Depth map']] },
     { key: 'shadows', label: 'Shadows', values: [[0, '0 - Off'], [1, '1 - Headlights and moon'], [2, '2 - Sharp']] },
     { key: 'pace', label: 'Pace', values: PACES.map((p) => [p, `×${p}`]) },
@@ -180,7 +183,7 @@ const menu = new Menu({
     { key: 'fps', label: 'Frame rate', values: onOff },
   ],
   onWorld: () => swap(),
-  onLive: (key) => { saveLive(); audio.sync(); if (key === 'tilt') applyTilt(); },
+  onLive: (key) => { saveLive(); audio.sync(); if (key === 'tilt') applyTilt(); else if (key === 'view') applyView(); },
 });
 // options are remembered as soon as they change
 function saveLive() {
@@ -191,13 +194,13 @@ function saveLive() {
 function saveWorld() { saveOptions({ ...opt }); }
 if (params.has('menu')) menu.toggle(true); // (screenshots)
 document.getElementById('menubtn').addEventListener('click', () => menu.toggle());
-const KEYS = { Space: 'pause', BracketRight: 'faster', BracketLeft: 'slower', KeyH: 'text', KeyR: 'restart' };
+const KEYS = { Space: 'view', BracketRight: 'faster', BracketLeft: 'slower', KeyH: 'text', KeyR: 'restart' };
 addEventListener('keydown', (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (menu.key(e)) { e.preventDefault(); return; }
   if (KEYS[e.code]) { e.preventDefault(); act[KEYS[e.code]](); }
 });
-const PAD = { A: 'pause', R1: 'faster', L1: 'slower', Y: 'text' };
+const PAD = { A: 'view', R1: 'faster', L1: 'slower', Y: 'text' };
 const pads = new Gamepads((btn) => { if (!menu.pad(btn) && PAD[btn]) act[PAD[btn]](); });
 
 // ---------------------------------------------------------------- loop
@@ -207,6 +210,7 @@ function frame() {
   fps();
   const dt = Math.min(clock.getDelta(), 0.1);
   pads.poll();
+  const paused = menu.open;           // the menu pauses everything: the car, the weather, the camera, the sound effects
   const run = !paused && !still;
   const pace = opt.pace;
   if (car) {
@@ -222,14 +226,13 @@ function frame() {
       if (opt.cycle && !swapping && !params.has('s')) cycleNext(); else restart();
     }
   }
-  drone.aim(s, car ? car.camDir() : dir, still ? 0 : car ? dt * pace : dt, still, tilt && car ? carCentre.copy(car.rig.pos).setY(car.rig.pos.y + 0.7) : null);
+  cameras.update(s, car ? car.camDir() : dir, run ? (car ? dt * pace : dt) : 0, still);
   audio.update(run && car ? dt * pace : 0, camera, paused || still);
-  weather.update(still ? 0 : dt, camera);
-  world.moonShadow?.follow(camera, drone.focus);
-  drawText(still ? 0 : dt);
+  weather.update(run ? dt : 0, camera);
+  world.moonShadow?.follow(camera, cameras.focus);
+  drawText(run ? dt : 0);
   if (tilt) { // sharp on the car (or the road it's looking at); full effect from ~110 m up, none skimming below ~30 m
-    const subject = car ? carFocus.copy(car.rig.pos).setY(car.rig.pos.y + 0.7) : drone.focus;
-    tilt.render(subject, THREE.MathUtils.smoothstep(drone.cam.y - subject.y, 30, 110), still ? 1 : dt);
+    tilt.render(cameras.subject, THREE.MathUtils.smoothstep(camera.position.y - cameras.subject.y, 30, 110), still ? 1 : dt);
   } else renderer.render(scene, camera);
 }
 
