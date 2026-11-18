@@ -45,6 +45,9 @@ PALETTES["amalfi"] = (   # Positano and the villages: painted plaster in sun-ble
 PALETTES["monaco"] = (   # Riviera apartment blocks: cream, ochre and pink render, white towers
     ["#efe6d2"] * 3 + ["#e8d9bc"] * 3 + ["#e3b98f"] * 2 + ["#d9967a"] + ["#f4f1ea"] * 3 + ["#d6c3a0", "#c9ced1", "#e9c46a", "#d98b8b", "#b8c4cc"],
     ["#b5573c"] * 3 + ["#a34a33"] * 2 + ["#8c8c88"] * 3 + ["#b4b0a6"] * 2 + ["#6e7378"])
+PALETTES["ah"] = (   # alpine resort: whitewashed and cream render, weathered larch timber, a few warm ochres
+    ["#efe9dc"] * 4 + ["#e3d8c2"] * 3 + ["#8a6a4a"] * 3 + ["#6f5238"] * 2 + ["#a5815a"] * 2 + ["#d6c3a0", "#c9bfae", "#b8a68a", "#d9b98f"],
+    ["#5d5f63"] * 4 + ["#6e7378"] * 3 + ["#4a3b30"] * 3 + ["#7a5a42"] * 2 + ["#8c8c88", "#a7a399"])
 if SITE in PALETTES: WALLS, ROOFS = PALETTES[SITE]
 
 course = json.load(open(os.path.join(TRACK, "course.json")))

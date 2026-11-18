@@ -1,0 +1,16 @@
+{
+ "crs": "EPSG:32632",
+ "x0": 264193.0,
+ "y0": 4999167.0,
+ "step": 2.0,
+ "nx": 3072,
+ "ny": 3072,
+ "rows": "north_to_south",
+ "bbox_lonlat": [
+  6.03697,
+  45.05939,
+  6.0702,
+  45.09585
+ ],
+ "source": "IGN RGE ALTI (Licence Ouverte 2.0), 1 m LiDAR terrain model resampled to 2 m"
+}

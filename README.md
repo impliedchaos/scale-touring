@@ -18,6 +18,7 @@ driving itself.
 | Nagasaki, Japan | Mt. Inasa summit road down to the harbour, 4 km (GSI 5 m DEM) | `?site=nagasaki` |
 | Monaco | Moyenne Corniche (D 6007) from Èze down through Monaco to Port Hercule, 7.5 km (IGN RGE ALTI) | `?site=monaco` |
 | Sandia Crest, New Mexico | Sandia Crest Scenic Byway (NM 536), Sandia Park → Sandia Crest, 21 km, 2,100 m to 3,240 m (USGS 3DEP 1 m) | `?site=abq` |
+| L'Alpe d'Huez, France | D 211, Bourg-d'Oisans → L'Alpe d'Huez, 14 km, 21 hairpins, 720 m to 1,850 m, with snow on the high ground (IGN RGE ALTI) | `?site=ah` |
 
 More are listed in [TODO.md](TODO.md).
 
@@ -82,6 +83,7 @@ header, title, tree and ground settings), `terrain.bin` (height grid), `roads.js
 Big Sur's route is stored north to south so that the default (uphill) drive heads north with the sea on the left; `stitch_hk_route.py --names "" --label "..."` keeps every way in a CA 1 query.
 
 Sandia's route is stored crest to NM 14 (the default drive climbs to the crest). Its LiDAR project is published as 1.5 km "original resolution" tiles only over the crest, so it was fetched with `fetch_3dep_dem.py --epsg 26913 --opr --project NM_North_Central_FEMA` (the newest project over the area, Santa Fe County's, only clips a corner). OSM has just ~120 buildings along it.
+Alpe d'Huez's route is stored valley to resort (the default drive climbs the hairpins). Its LiDAR is terraced and the hairpins stack, so `build_site.py` smooths the road height hard (`y_smooth=60`; 15 gave a 43% grade, the real road peaks near 13%). Snow is the `ground.snow` block (`above`, `band`, `flat`, `color`), painted by `buildTerrain` above a ragged line and mostly shed by steep rock.
 
 Amalfi's route is stored west to east (Positano first) so that the default drive heads west with the sea on the left and ends in Positano.
 

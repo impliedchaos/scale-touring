@@ -65,6 +65,14 @@ SITES = {
                    ground=dict(green="#586a3a", scrub="#76733f", rock="#a39884", rockFlat=0.75, sand="#d8c8a0", sandBelow=2.0),
                    credits=["Terrain: IGN RGE ALTI (Licence Ouverte 2.0), 1 m LiDAR terrain model",
                             "Road: © OpenStreetMap contributors (ODbL)"]),
+    "ah": dict(title=["L'ALPE D'HUEZ", "D 211 · BOURG-D'OISANS → L'ALPE D'HUEZ · 21 HAIRPINS · FRANCE"], start_name="Bourg-d'Oisans", route="data/ah_route.json",
+               dem="assets/ah/dem_ah", crest=False,   # stored valley to resort: the default (uphill) drive climbs the hairpins
+               cell=6.0, margin=500.0, dem_smooth=2.0, flat_r=8.0, blend_r=28.0, y_smooth=60.0,
+               forest=dict(count=24000, young=4000, roadsideBroadleaf=600, wideBroadleaf=0),
+               ground=dict(green="#4a5d3a", scrub="#7a6f55", rock="#8a857c", rockFlat=0.7,
+                           snow=dict(above=1000, band=240, flat=0.5, color="#eef2f7")),   # a winter scene: snow from 1,000 m, the valley floor stays bare
+               credits=["Terrain: IGN RGE ALTI® digital terrain model, derived from LiDAR HD (Licence Ouverte 2.0)",
+                        "Road: © OpenStreetMap contributors (ODbL)"]),
     "abq": dict(title=["SANDIA CREST SCENIC BYWAY", "NM 536 · SANDIA PARK → SANDIA CREST · NEW MEXICO"], start_name="Sandia Crest", route="data/abq_route.json",
                 dem="assets/abq/dem_abq", crest=False,   # stored crest to NM 14: the default (uphill) drive climbs to the crest
                 cell=8.0, margin=500.0, dem_smooth=0.0, flat_r=8.0, blend_r=28.0, y_smooth=15.0,   # 8 m cells: the 22 km road's box is 10 x 7 km

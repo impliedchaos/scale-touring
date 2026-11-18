@@ -14,6 +14,7 @@ export const PLACES = [
   { id: 'nagasaki', label: 'Nagasaki, Japan' },
   { id: 'monaco', label: 'Monaco' },
   { id: 'abq', label: 'Sandia Crest, New Mexico' },
+  { id: 'ah', label: "L'Alpe d'Huez, France" },
 ];
 export const PACES = [0.25, 0.5, 1, 2, 4, 8];
 

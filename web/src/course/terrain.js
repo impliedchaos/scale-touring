@@ -10,7 +10,7 @@ export function buildTerrain(course, portals = []) {
   const pos = new Float32Array(cells * 18), col = new Float32Array(cells * 18);
   const r = rng(42);
   const G = course.ground || null;                      // per-site scrub / rock tints (fly-over sites); Japan has none
-  const gScrub = G && new THREE.Color(G.scrub), gRock = G && new THREE.Color(G.rock), gGreen = G && new THREE.Color(G.green), gSand = G?.sand && new THREE.Color(G.sand);
+  const gScrub = G && new THREE.Color(G.scrub), gRock = G && new THREE.Color(G.rock), gGreen = G && new THREE.Color(G.green), gSand = G?.sand && new THREE.Color(G.sand), gSnow = G?.snow && new THREE.Color(G.snow.color || '#eef2f6');
   const hash = (i, j) => { const t = Math.sin(i * 127.1 + j * 311.7) * 43758.5453; return t - Math.floor(t); };
   const vnoise = (x, z) => {                            // smooth value noise, one lattice cell per `1` of x/z
     const i = Math.floor(x), j = Math.floor(z), fx = x - i, fz = z - j, u = fx * fx * (3 - 2 * fx), w = fz * fz * (3 - 2 * fz);
@@ -36,6 +36,11 @@ export function buildTerrain(course, portals = []) {
       const steep = THREE.MathUtils.clamp((G.rockFlat - flat) / 0.2, 0, 1) * (0.55 + 0.45 * vnoise(cx / 40, cz / 40));
       c.lerp(gRock, Math.min(1, steep));
       if (gSand) c.lerp(gSand, 0.92 * (1 - THREE.MathUtils.smoothstep(h, G.sandBelow, G.sandBelow + 1.5))); // beaches: low ground by the water
+      if (gSnow) {                                      // snow above a ragged line, clinging to gentle slopes and mostly shed by steep rock
+        const S = G.snow, line = S.above + (vnoise(cx / 160, cz / 160) - 0.5) * S.band;
+        const hold = 0.15 + 0.85 * THREE.MathUtils.clamp((flat - S.flat) / 0.25, 0, 1);
+        c.lerp(gSnow, THREE.MathUtils.smoothstep(h, line, line + S.band * 0.5) * hold);
+      }
     }
     const jit = 0.9 + r() * 0.2;
     c.multiplyScalar(jit);
