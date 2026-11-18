@@ -40,7 +40,7 @@ export async function createWorld({ site = null, day = false, weather = 'clear',
   const road = buildRoad(path);
   const gutters = gutterFlags(path, course, heightAt);
   scene.add(buildTerrain(course, tunnelPortals(path, course)), road, buildBridges(path, course, heightAt), buildTunnels(path, course), buildGuardrails(path, course), buildGutters(path, gutters),
-  buildForest(path, heightAt, { ...forest, ...course.forest, buildings: course.buildings }), buildBuildings(course.buildings, { day: day }));
+  buildForest(path, heightAt, { ...forest, ...course.forest, buildings: course.buildings, snow: course.ground?.snow }), buildBuildings(course.buildings, { day: day }));
   if (course.sea != null) { // sea level (course.json `sea`, metres): a flat translucent sheet over the whole terrain; the DEM's bay lies below it
     const { nx, nz, x0, z0, cell } = course.terrain;
     const sea = new THREE.Mesh(new THREE.PlaneGeometry(nx * cell, nz * cell).rotateX(-Math.PI / 2), seaMaterial(day));

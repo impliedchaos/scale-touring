@@ -119,7 +119,7 @@ const placeAt = (r, x, y, z, sx, sy, sz) =>
 
 // `wideBroadleaf`: extra broadleaf trees scattered as wide as the conifers, for the drone's-eye views (the fly-by
 // fly-by and the title screen behind it). From the road the fog hides them and the chunks skip drawing.
-export function buildForest(path, heightAt, { count = 14000, young = 6000, minRoad = 10, maxRoad = 320, wideBroadleaf = 0, wideBias = 1.6, roadsideBroadleaf = 9000, palms = 0, foliage = null, buildings = null, sparse: sparseSpec = null } = {}) {
+export function buildForest(path, heightAt, { count = 14000, young = 6000, minRoad = 10, maxRoad = 320, wideBroadleaf = 0, wideBias = 1.6, roadsideBroadleaf = 9000, palms = 0, foliage = null, buildings = null, sparse: sparseSpec = null, snow = null } = {}) {
   sparse = sparseSpec;
   const inTown = townMask(buildings), nearRoad = roadProximity(path);
   // 22 triangles: no trunk caps (inside the crown / underground). The crown keeps its base: you see it from below
@@ -134,7 +134,7 @@ export function buildForest(path, heightAt, { count = 14000, young = 6000, minRo
   };
   const geo = mergeGeometries([paint(trunk.toNonIndexed(), 0x2b2018), paint(crown.toNonIndexed(), 0x2f5a30)]);
   geo.computeVertexNormals();
-  const mat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+  const mat = snowy(new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }), snow, true);
 
   const r = rng(99);
   const tree = (k) => (x, y, z) => ({
@@ -150,7 +150,7 @@ export function buildForest(path, heightAt, { count = 14000, young = 6000, minRo
   items = [...thinForTown(items, town, { thin: 0.6, push: 6, minRoad }), ...thinForTown(saplings, town, { thin: 0.85, push: 6, minRoad: 6.5 })];
   const low = lowland(buildings), broadleaves = broadleaf(path, heightAt, inTown, nearRoad, low, { ...foliage, count: roadsideBroadleaf });
   if (wideBroadleaf) broadleaves.push(...broadleaf(path, heightAt, inTown, nearRoad, low, { count: wideBroadleaf, minRoad, maxRoad, bias: wideBias, seed: 2718, ...foliage }));
-  const groups = [...chunked(items, geo, mat, 250), ...chunked(broadleaves, broadleafGeo(paint), mottled(), 250)];
+  const groups = [...chunked(items, geo, mat, 250), ...chunked(broadleaves, broadleafGeo(paint), snowy(mottled(), snow, false), 250)];
   if (palms) groups.push(...chunked(palmTrees(path, heightAt, inTown, nearRoad, palms), palmGeo(paint), mottled(), 250));
   return cullingGroup('forest', groups);
 }
@@ -182,6 +182,41 @@ float mNoise(vec3 x) {
   float mn = 0.65 * mNoise(vMottle * 2.25) + 0.35 * mNoise(vMottle * 6.5);
   diffuseColor.rgb *= mix(0.45, 1.15, mn);`);
   };
+  return mat;
+}
+
+/** Snow on tree crowns above the site's snow line (`ground.snow`, the same line the terrain uses, ragged the same way).
+ *  Conifers (`conifer`) hold more toward the top of the crown and none on the trunk; other crowns get an even dusting.
+ *  Patched in after the mottling so the snow isn't darkened by it. */
+function snowy(mat, S, conifer) {
+  if (!S) return mat;
+  const prev = mat.onBeforeCompile, f = (n) => Number(n).toFixed(3), c = new THREE.Color(S.color || '#eef2f6');
+  mat.onBeforeCompile = (sh) => {
+    prev?.(sh);
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec4 vSnow;')
+      .replace('#include <project_vertex>', `#include <project_vertex>
+  vec4 snw = vec4(transformed, 1.0);
+  #ifdef USE_INSTANCING
+    snw = instanceMatrix * snw;
+  #endif
+  vSnow = vec4((modelMatrix * snw).xyz, transformed.y);`);
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `#include <common>
+varying vec4 vSnow;
+float sH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float sN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(sH(i), sH(i + vec2(1, 0)), f.x), mix(sH(i + vec2(0, 1)), sH(i + vec2(1, 1)), f.x), f.y); }`)
+      .replace('#include <alphatest_fragment>', `#include <alphatest_fragment>
+  {
+    float line = ${f(S.above)} + (sN(vSnow.xz / 160.0) - 0.5) * ${f(S.band)};
+    float amt = smoothstep(line, line + ${f(S.band * 0.5)}, vSnow.y);
+    ${conifer ? 'float cover = smoothstep(1.7, 2.6, vSnow.w) * mix(0.3, 0.8, smoothstep(2.5, 6.5, vSnow.w));' : 'float cover = 0.5;'}
+    float clump = 0.75 + 0.25 * sN(vSnow.xz * 1.3 + vSnow.y * 0.7);
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(${f(c.r)}, ${f(c.g)}, ${f(c.b)}), clamp(amt * cover * clump, 0.0, 1.0));
+  }`);
+  };
+  mat.customProgramCacheKey = () => `snow${conifer ? 'c' : 'b'}${f(S.above)}${f(S.band)}${prev ? 'm' : ''}`;
   return mat;
 }
 
