@@ -277,9 +277,14 @@ def main():
     for i, js in enumerate(tree.query_ball_point(np.c_[GX.ravel(), GZ.ravel()], near)):
         r_, c_ = divmod(i, GX.shape[1])
         if js and not under[r_, c_] and not roof[r_, c_]:
+            js = np.asarray(js)
+            js = js[np.abs(js - idx[r_, c_]) * STEP > near * 2]   # another leg, not the stretch of road this node belongs to (on a grade that is lower and would sink the ground beside the road)
+            if not len(js):
+                continue
             lv = y[js]
             lv = lv[lv >= y[idx[r_, c_]] - 6.0]          # only legs within 6 m in height (hairpin legs); a far lower road is just a valley below
-            terrain[r_, c_] = min(terrain[r_, c_], lv.min() - 0.25)
+            if len(lv):
+                terrain[r_, c_] = min(terrain[r_, c_], lv.min() - 0.25)
     pushed = push_under_road(terrain, x, y, z, tx, tz, gx0, gz0, CELL, keep=roof, skip=binary_dilation(tun_in, iterations=4))
     if pushed.any():
         print(f"stacked hairpins: lowered {np.count_nonzero(pushed)} terrain nodes by up to {pushed.max():.2f} m")
