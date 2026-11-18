@@ -49,7 +49,7 @@ export async function createWorld({ site = null, day = false, weather = 'clear',
     sea.renderOrder = 1; // after the opaque world, so the shallows show the sand through it
     scene.add(sea);
   }
-  if (undergrowth) scene.add(buildUndergrowth(path, heightAt, { buildings: course.buildings, snow: course.ground?.snow }));
+  if (undergrowth) scene.add(buildUndergrowth(path, heightAt, { buildings: course.buildings, snow: course.ground?.snow, colors: course.ground }));
   if (shadows) castShadows(renderer, scene);
 
   const idxAt = (s) => Math.round(THREE.MathUtils.clamp(s / path.step, 0, path.n - 1));

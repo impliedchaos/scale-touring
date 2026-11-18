@@ -288,8 +288,9 @@ function palmTrees(path, heightAt, inTown, nearRoad, count) {
  *  demand (the same plants every time: each square seeds its own RNG) and dropped again once the camera has left. Every
  *  plant also shrinks into the ground with its distance from the camera, so what's at the edge of the ring is already
  *  gone before a square is built or dropped, and nothing pops. It picks up snow like the trees (`snow` = `ground.snow`). */
-export function buildUndergrowth(path, heightAt, { buildings = null, snow = null, cell = 64, reach = 170 } = {}) {
+export function buildUndergrowth(path, heightAt, { buildings = null, snow = null, colors = null, cell = 64, reach = 170 } = {}) {
   const inTown = townMask(buildings), nearRoad = roadProximity(path), town = townness(buildings);
+  const bushHex = colors?.bush || 0x2a4a26, tuftHex = colors?.tuft || 0x3e5a24;     // `ground.bush` / `ground.tuft` in course.json: tumbleweeds in the desert
   const BOOST = 3, DENSITY = { bush: 0.06, tuft: 0.15 };   // per m² away from the road; BOOST× within 20 m of it
   const fade = { value: new THREE.Vector2(100, reach) };
   const mat = fadeWithDistance(snowy(mottled({ vertexColors: false }), snow, false), fade); // same dappling as the broadleaf crowns
@@ -318,11 +319,11 @@ export function buildUndergrowth(path, heightAt, { buildings = null, snow = null
         if (Math.abs(heightAt(x + 2, z) - heightAt(x - 2, z)) + Math.abs(heightAt(x, z + 2) - heightAt(x, z - 2)) > maxSlope) continue;
         if (bush) {
           const k = 0.6 + r() * 1.0;
-          list.push({ m: placeAt(r, x, h - 0.15 * k, z, k * (0.8 + r() * 0.5), k * (0.55 + r() * 0.3), k * (0.8 + r() * 0.5)), c: shade(0x2a4a26, 0.55 + r() * 0.4) }); // a shade under the tree crowns: their facets face the sky
+          list.push({ m: placeAt(r, x, h - 0.15 * k, z, k * (0.8 + r() * 0.5), k * (0.55 + r() * 0.3), k * (0.8 + r() * 0.5)), c: shade(bushHex, 0.55 + r() * 0.4) }); // a shade under the tree crowns: their facets face the sky
         } else {
           const k = 0.6 + r() * 0.8, m = placeAt(r, x, h - 0.08, z, k, k * (0.7 + r() * 0.6), k);
           m.multiply(new THREE.Matrix4().makeRotationX((r() - 0.5) * 0.5));                 // lean a little, like grass does
-          list.push({ m, c: shade(0x3e5a24, 0.6 + r() * 0.45) });                           // dwarf bamboo: a touch yellower
+          list.push({ m, c: shade(tuftHex, 0.6 + r() * 0.45) });                           // dwarf bamboo: a touch yellower
         }
       }
       if (!list.length) continue;
