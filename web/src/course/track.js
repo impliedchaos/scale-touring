@@ -4,14 +4,24 @@
 // The meshes are built in road.js, terrain.js, vegetation.js, buildings.js and structures.js.
 import * as THREE from 'three';
 
+/** fetch, or throw naming the file. A missing file can come back as the app's index.html with a 200 (Vite's fallback), not a 404. */
+async function get(url) {
+  const r = await fetch(url);
+  if (!r.ok || (r.headers.get('content-type') || '').startsWith('text/html')) throw new Error(`missing ${url} (${r.ok ? 'the server sent a web page instead' : `HTTP ${r.status}`})`);
+  return r;
+}
+
 export async function loadCourse(base) {
-  const course = await (await fetch(base + 'course.json')).json();
-  const buf = await (await fetch(base + course.terrain.file)).arrayBuffer();
+  const course = await (await get(base + 'course.json')).json();
+  const buf = await (await get(base + course.terrain.file)).arrayBuffer();
+  if (buf.byteLength !== course.terrain.nx * course.terrain.nz * 4) {
+    throw new Error(`${base}${course.terrain.file} is ${buf.byteLength} bytes, expected ${course.terrain.nx}×${course.terrain.nz} floats`);
+  }
   course.heights = new Float32Array(buf);
   // buildings are optional scenery (tools/build_buildings.py): a missing file just means an empty mountain
-  course.buildings = await fetch(base + 'buildings.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  course.buildings = await get(base + 'buildings.json').then((r) => r.json()).catch(() => null);
   // so are the other roads (tools/build_roads.py)
-  course.roads = await fetch(base + 'roads.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  course.roads = await get(base + 'roads.json').then((r) => r.json()).catch(() => null);
   return course;
 }
 
