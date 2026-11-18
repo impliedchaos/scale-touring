@@ -248,7 +248,7 @@ def main():
     t = np.clip((dist_r - cfg["flat_r"]) / (cfg["blend_r"] - cfg["flat_r"]), 0, 1)
     t = t * t * (3 - 2 * t)
     terrain = (road_level * (1 - t) + raw * t).astype(np.float32)
-    under = deck_in[idx]                                  # nodes nearest to a bridge deck: the valley stays as it is
+    under = deck_in[idx] & (dist_r < cfg["blend_r"])      # nodes beside a bridge deck: the valley stays as it is (not the whole hillside nearest it)
     terrain[under] = np.minimum(raw[under], y[idx][under] - 0.4)   # ...but never above the deck (the bridge slab, 1.3 m thick, hides this)
     roof = tun_in[idx] & (dist_r < cfg["blend_r"])
     terrain[roof] = np.maximum(raw[roof], y[idx][roof] + 6.0)   # the hill over a tunnel stays (and is at least a 6 m roof)
