@@ -84,6 +84,7 @@ SITES = {
     "nagasaki": dict(title=["INASAYAMA", "MT. INASA ROADS · NAGASAKI · JAPAN"], start_name="the summit", route="data/nagasaki_route.json",
                      dem="assets/nagasaki/dem_inasa", crest=False,   # stored summit to harbour: the default (uphill) drive climbs to the summit
                      cell=6.0, margin=500.0, dem_smooth=1.0, flat_r=8.0, blend_r=28.0, y_smooth=15.0,
+                     min_radius=6.0,   # the road is 7 m wide: a centreline bend tighter than ~6 m folds its inner edge over itself (s 2312)
                      credits=["Terrain: 出典：国土地理院 (GSI Japan) DEM5A airborne LiDAR, 5 m",
                               "Road: © OpenStreetMap contributors (ODbL)"]),
 }
@@ -94,6 +95,21 @@ ROAD_HALF = 3.5                # same two-lane road as Japan
 RUNOFF = 150                   # metres of road kept past the finish line
 RAIL_DROP = 1.5
 MIN_RAIL_GAP = 30.0
+
+
+def open_bends(x, z, rmin, iters=300):
+    """Round off any bend of the (1 m spaced) centreline tighter than `rmin`: the road is 2 * ROAD_HALF wide, so below about ROAD_HALF
+    its inner edge folds over itself (the strip zigzags). Smooths only around the offending points, until none is left."""
+    for n in range(iters):
+        dx, dz = np.gradient(x), np.gradient(z)
+        k = (dx * np.gradient(dz) - dz * np.gradient(dx)) / np.maximum(dx * dx + dz * dz, 1e-9) ** 1.5
+        tight = np.abs(k) > 1.0 / rmin
+        if not tight.any():
+            return x, z, n
+        w = np.clip(gaussian_filter1d(binary_dilation(tight, iterations=6).astype(float), 4.0) * 1.5, 0, 1)
+        x = x * (1 - w) + gaussian_filter1d(x, 2.0, mode="nearest") * w
+        z = z * (1 - w) + gaussian_filter1d(z, 2.0, mode="nearest") * w
+    return x, z, iters
 
 
 def push_under_road(terrain, x, y, z, tx, tz, gx0, gz0, cell, keep, skip, clear=0.15, rounds=30):
@@ -207,6 +223,9 @@ def main():
         y[ia:ib + 1] = np.linspace(y[ia], y[ib], ib - ia + 1)
         tun[ia:ib + 1] = True
     x, z = gaussian_filter1d(x, XZ_SMOOTH, mode="nearest"), gaussian_filter1d(z, XZ_SMOOTH, mode="nearest")
+    if cfg.get("min_radius"):   # opt-in: smoothing rounds off a sharp corner but squeezes a real switchback's legs together (Alpe d'Huez got tighter)
+        x, z, rounds = open_bends(x, z, cfg["min_radius"])
+        print(f"tight bends: rounded off over {rounds} passes (minimum centreline radius {cfg['min_radius']:g} m)")
     y = gaussian_filter1d(y, cfg["y_smooth"], mode="nearest")
     start = max(int(np.argmax(y)) - int(cfg.get("crest_extra", 0)), 0) if cfg["crest"] else 0   # `crest_extra`: metres of road kept past the crest
     x, y, z, deck, tun = x[start:], y[start:], z[start:], deck[start:], tun[start:]
