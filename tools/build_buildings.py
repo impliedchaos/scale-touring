@@ -9,7 +9,11 @@ Inputs : data/raw/buildings_osm.json (Overpass: every building way inside the te
          web/public/track/harasu/roads.json, if there (tools/build_roads.py: run it first)
 Output : web/public/track/harasu/buildings.json
          {credits, floor, buildings: [{p: [x, z, x, z, ...] footprint CCW, b: base y, t: wall top y, f: floors,
-                                       w: wall colour, r: roof colour, h: hipped-roof rise (0 = flat)}]}
+                                       w: wall colour, r: roof colour, h: roof rise (0 = flat), and optionally
+                                       k: roof kind (0 flat, 1 hipped, 2 gabled, 3 flat with a parapet; absent = hipped if h > 0),
+                                       q: the roof's rectangle, 4 corners with the first edge the long one (for p that isn't one),
+                                       u: wall colour above sp metres (two-tone), v: 1 = beam ends (vigas) along the roofline}],
+          style: {windows, eave, parapet, lines}}   (per place: STYLES below)
 
 Heights come from building:levels when OSM has it, otherwise a guess from the kind and footprint size (Ikaho's
 hotels are tall, sheds aren't). Our road is a smoothed copy of OSM's, so buildings that end up on it are nudged
@@ -49,6 +53,29 @@ PALETTES["ah"] = (   # alpine resort: whitewashed and cream render, weathered la
     ["#efe9dc"] * 4 + ["#e3d8c2"] * 3 + ["#8a6a4a"] * 3 + ["#6f5238"] * 2 + ["#a5815a"] * 2 + ["#d6c3a0", "#c9bfae", "#b8a68a", "#d9b98f"],
     ["#5d5f63"] * 4 + ["#6e7378"] * 3 + ["#4a3b30"] * 3 + ["#7a5a42"] * 2 + ["#8c8c88", "#a7a399"])
 if SITE in PALETTES: WALLS, ROOFS = PALETTES[SITE]
+
+# Per-place building character beyond colour (roof shapes, wall materials, windows, overhead lines). A place without an entry
+# keeps the plain look above: hipped roofs on small four-corner buildings, flat on the rest.
+#   roof     "jp" gabled and hipped tile roofs, flat parapeted blocks · "chalet" steep gables, timber over a stone base ·
+#            "pueblo" flat parapets with beam ends, a few low metal gables
+#   windows  texture variant in buildings.js · eave: roof overhang (m) · parapet: height (m) · lines: overhead cables (utilities.js)
+STYLES = {
+    "jp": dict(roof="jp", windows="bands", eave=0.75, parapet=0.35, lines="jp"),
+    "ah": dict(roof="chalet", windows="shutters", eave=1.1),
+    "abq": dict(roof="pueblo", windows="deep", eave=0.45, parapet=0.5),
+    "rio": dict(lines="rio"),
+}
+STYLES["nagasaki"] = STYLES["jp"]
+STYLE = STYLES.get(SITE or "jp", {})
+if STYLE.get("roof") == "jp":    # kawara tile in blue-greys, the odd tin roof; white and cream plaster, dark timber, grey concrete
+    WALLS = ["#e8e4da"] * 3 + ["#d9d4c6"] * 3 + ["#cfc8b8"] * 2 + ["#b9b6ae"] * 2 + ["#a9a79f"] + ["#c5ccd0"] * 2 + ["#6b5a48", "#8a7a66", "#d8cdb8"]
+    ROOFS = ["#3a4350"] * 4 + ["#444c58"] * 3 + ["#2f353f"] * 2 + ["#5a626e"] + ["#8a3a30", "#2f5f55", "#4a5f7a", "#6b4a3a"]
+elif STYLE.get("roof") == "chalet":
+    LOWER = ["#e9e4d8"] * 3 + ["#d8d2c2"] * 2 + ["#b9b2a2"] * 2 + ["#9c9486"]      # whitewash and stone below
+    UPPER = ["#8a6a4a"] * 3 + ["#6f5238"] * 2 + ["#a5815a"] * 2 + ["#7a5a3e"]      # larch timber above
+elif STYLE.get("roof") == "pueblo":     # adobe and stucco; the roofs are the odd corrugated-metal ones
+    WALLS = ["#c9a77c"] * 3 + ["#b98f64"] * 2 + ["#d4b78f"] * 3 + ["#a9835a"] + ["#c2a27d"] * 2 + ["#e0c9a3"]
+    ROOFS = ["#5e7f5c"] * 2 + ["#8a3f2f"] * 2 + ["#6b645c"] + ["#7d6f5e"]
 
 course = json.load(open(os.path.join(TRACK, "course.json")))
 lat0 = course["origin_lat"] if SITE else json.load(open(os.path.join(ROOT, "data", "route33.json")))["origin"][0]
@@ -131,6 +158,49 @@ def hip_rise(p, tags, a):
     return round(float(np.clip(w * 0.32, 0.8, 3.2)), 2)
 
 
+def obb(p):
+    """the footprint's smallest enclosing rectangle: (corners A, B, C, D CCW with A-B the long side, how much of it the footprint fills)"""
+    from scipy.spatial import ConvexHull
+    h = p[ConvexHull(p).vertices]
+    best = None
+    for i in range(len(h)):
+        e = h[(i + 1) % len(h)] - h[i]; L = np.linalg.norm(e)
+        if L < 1e-6: continue
+        u = e / L; w = np.array([-u[1], u[0]])
+        a, b = h @ u, h @ w
+        sz = (a.max() - a.min()) * (b.max() - b.min())
+        if best is None or sz < best[0]: best = (sz, u, w, a.min(), a.max(), b.min(), b.max())
+    sz, u, w, a0, a1, b0, b1 = best
+    if (a1 - a0) < (b1 - b0): u, w, a0, a1, b0, b1 = w, -u, b0, b1, -a1, -a0   # long side first, still CCW
+    c = [u * a0 + w * b0, u * a1 + w * b0, u * a1 + w * b1, u * a0 + w * b1]
+    return c, min(1.0, abs(area(p)) / max(sz, 1e-6))
+
+
+def style_roof(p, tags, a, key, f):
+    """(kind, rise, rectangle or None) under this place's STYLE; None = the plain legacy roof"""
+    roof = STYLE.get("roof")
+    if not roof: return None
+    kind, shape = tags.get("building", "yes"), tags.get("roof:shape")
+    q, fill = obb(p)
+    L, W = np.linalg.norm(q[1] - q[0]), np.linalg.norm(q[3] - q[0])
+    boxy = fill >= 0.72 and W >= 3.0
+    qq = [round(float(v), 1) for c in q for v in c]
+    r = h01(key, "k")
+    if roof == "jp":
+        block = a > 400 or f >= 4 or kind in ("apartments", "commercial", "industrial", "hotel", "retail", "school", "office", "hospital", "public")
+        if shape == "flat" or block or not boxy: return (3 if block or shape == "flat" else 0), 0.0, None
+        rise = float(np.clip(W / 2 * (0.4 if a > 24 else 0.3), 0.7, 3.2))
+        return (2 if r < 0.68 else 1), round(rise, 2), qq
+    if roof == "chalet":
+        if shape == "flat" or not boxy or kind in ("service", "construction", "garage"): return 0, 0.0, None
+        pitch = 0.78 if a < 400 else 0.45                      # tall gables on the chalets, a gentler pitch on the big resort blocks
+        return 2, round(float(np.clip(W / 2 * pitch, 1.1, 4.8)), 2), qq
+    if roof == "pueblo":
+        if a > 25 and boxy and r < 0.3 and shape != "flat": return 2, round(float(np.clip(W / 2 * 0.22, 0.5, 1.6)), 2), qq
+        return 3, 0.0, None
+    return None
+
+
 def main():
     if "--fetch" in sys.argv or not os.path.exists(RAW): fetch()
     elements = json.load(open(RAW))["elements"]
@@ -202,17 +272,28 @@ def main():
         top = max(float(gy.max()) + 1.0, gc + f * FLOOR)       # on a hillside the uphill wall still gets its storeys
         wall = tags.get("building:colour") or WALLS[int(h01(key, "w") * len(WALLS))]
         roof = tags.get("roof:colour") or ROOFS[int(h01(key, "r") * len(ROOFS))]
-        out.append({"id": key, "name": tags.get("name:en") or tags.get("name"), "kind": tags.get("building"),
-                    "p": [round(float(v), 1) for v in p.ravel()], "b": round(base, 2), "t": round(top, 2),
-                    "f": f, "w": wall, "r": roof, "h": hip_rise(p, tags, a),
-                    "s": round(float(road.query(c)[1] * step))})
+        rec = {"id": key, "name": tags.get("name:en") or tags.get("name"), "kind": tags.get("building"),
+               "p": [round(float(v), 1) for v in p.ravel()], "b": round(base, 2), "t": round(top, 2),
+               "f": f, "w": wall, "r": roof, "h": hip_rise(p, tags, a),
+               "s": round(float(road.query(c)[1] * step))}
+        sr = style_roof(p, tags, a, key, f)
+        if sr:
+            rec["k"], rec["h"] = sr[0], sr[1]
+            if sr[2]: rec["q"] = sr[2]
+        if STYLE.get("roof") == "chalet" and "building:colour" not in tags and h01(key, "tt") < 0.75:
+            rec["w"] = LOWER[int(h01(key, "lo") * len(LOWER))]; rec["u"] = UPPER[int(h01(key, "up") * len(UPPER))]
+            rec["sp"] = FLOOR if f >= 2 else 0.75            # the stone storey, or a low plinth under a single storey of timber
+        if STYLE.get("roof") == "pueblo" and rec.get("k") == 3 and a > 40 and h01(key, "vg") < 0.6: rec["v"] = 1
+        out.append(rec)
 
     doc = {"credits": ["Building footprints: © OpenStreetMap contributors (ODbL)"], "floor": FLOOR,
            "buildings": [{k: v for k, v in b.items() if k not in ("id", "name", "kind") and v is not None} for b in out]}
+    st = {k: v for k, v in STYLE.items() if k != "roof"}
+    if st: doc["style"] = st
     json.dump(doc, open(os.path.join(TRACK, "buildings.json"), "w"), separators=(",", ":"))
     named = [b for b in out if b["name"]]
     print(f"{len(out)} buildings ({nudged} nudges off the road, {dropped} dropped), "
-          f"{sum(b['h'] > 0 for b in out)} hipped roofs, {len(named)} named; "
+          f"{sum(b['h'] > 0 for b in out)} pitched roofs, {len(named)} named; "
           f"{os.path.getsize(os.path.join(TRACK, 'buildings.json')) / 1024:.0f} KB")
     near = [b for b in out if abs(b["s"] - course["finish"]) < 400]
     print(f"{len(near)} within 400 m (along the road) of the finish; tallest: "

@@ -79,7 +79,7 @@ raw ground by `blend_r`), caps grid nodes near the road so hairpin legs at diffe
 on the valley side. Always fills DEM nodata (sea would otherwise give NaN terrain heights). Bridges (`bridges` in the route JSON) are run level between their ends with the terrain under them left uncarved.
 
 **Buildings (`tools/build_buildings.py`).** OSM footprints nudged off the road; heights from tags or guessed; walls and roofs from
-`PALETTES[site]` (else Japan's), `--flat` for flat roofs. Rendered as one merged mesh with a window texture that lights at night.
+`PALETTES[site]` (else Japan's), `--flat` for flat roofs; `STYLES[site]` adds roof shapes, window style and `lines` (overhead cables, `course/utilities.js`). Rendered as one merged mesh with a window texture that lights at night.
 
 **Fly-by look.** `course/flyby.js` (drone shots), `course/tiltshift.js` (lens and blur: by scene depth around the car at level 2, screen height at level 1), `game/beams.js` (fake volumetric headlight cones),
 `game/taillights.js`, `game/weather.js`, `game/world.js` (moon shadows).

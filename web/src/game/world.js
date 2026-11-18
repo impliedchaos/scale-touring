@@ -6,6 +6,7 @@ import { buildRoad, buildGuardrails, gutterFlags, buildGutters } from '../course
 import { buildTerrain } from '../course/terrain.js';
 import { buildForest, buildUndergrowth } from '../course/vegetation.js';
 import { buildBuildings } from '../course/buildings.js';
+import { buildUtilities } from '../course/utilities.js';
 import { buildBridges, buildTunnels, tunnelPortals } from '../course/structures.js';
 
 // `shadows`: get the scene ready for headlight shadows (see castShadows below). Free until a car's shadow spot is
@@ -40,7 +41,7 @@ export async function createWorld({ site = null, day = false, weather = 'clear',
   const road = buildRoad(path, { centre: course.centre, heightAt, bridges: course.bridges });
   const gutters = gutterFlags(path, course, heightAt);
   scene.add(buildTerrain(course, tunnelPortals(path, course)), road, buildBridges(path, course, heightAt), buildTunnels(path, course), buildGuardrails(path, course, heightAt), buildGutters(path, gutters),
-  buildForest(path, heightAt, { ...forest, ...course.forest, buildings: course.buildings, snow: course.ground?.snow }), buildBuildings(course.buildings, { day: day }));
+  buildForest(path, heightAt, { ...forest, ...course.forest, buildings: course.buildings, snow: course.ground?.snow }), buildBuildings(course.buildings, { day: day }), buildUtilities(path, heightAt, course));
   if (course.sea != null) { // sea level (course.json `sea`, metres): a flat translucent sheet over the whole terrain; the DEM's bay lies below it
     const { nx, nz, x0, z0, cell } = course.terrain;
     const sea = new THREE.Mesh(new THREE.PlaneGeometry(nx * cell, nz * cell).rotateX(-Math.PI / 2), seaMaterial(day));

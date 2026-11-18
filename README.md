@@ -77,7 +77,7 @@ header, title, tree and ground settings), `terrain.bin` (height grid), `roads.js
    Per-site knobs: `title`, `start_name`, `crest` (start at the road's highest point), `crest_extra` (metres of road kept past it), `cell`, `dem_smooth` (hides LiDAR terraces),
    `forest` (tree counts and foliage hue, palms, `roadsideBroadleaf` = the dense verge trees (default 9000), `wideBias`, `sparse` = `{below, palmRoad}` clears low ground of trees except palms by the road), `sea` (sea level in metres: a water sheet), `ground` (scrub / rock tints), `credits`.
 4. **Roads and buildings.** `python3 tools/build_roads.py --site <site> && python3 tools/build_buildings.py --site <site> [--flat]`.
-   `--flat` gives flat roofs (favelas, Hong Kong towers). `build_roads.py --paths` (with `--fetch` the first time) also draws footpaths, steps, pedestrian streets and cycleways as thin lines (Rio uses it); they don't push buildings aside. Per-site wall and roof colours are in `PALETTES` in `build_buildings.py`.
+   `--flat` gives flat roofs (favelas, Hong Kong towers). `build_roads.py --paths` (with `--fetch` the first time) also draws footpaths, steps, pedestrian streets and cycleways as thin lines (Rio uses it); they don't push buildings aside. Per-site wall and roof colours are in `PALETTES` in `build_buildings.py`. Per-site building character (gabled, hipped or parapeted roofs, two-tone chalet walls, adobe beam ends, window style, overhead utility lines) is in `STYLES` there; a place without an entry keeps the plain look.
 5. **Look at it**, then add the data credits to `CREDITS.md` (it is rendered in-game on the credits card).
 
 **Bridges.** The stitcher records OSM `bridge=*` spans in the route (`bridges`). `build_site.py` runs a bridge's deck level between its ends
